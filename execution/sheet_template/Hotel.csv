@@ -1,0 +1,2 @@
+id,citta,provincia,nome_hotel,indirizzo,stelle,telefono,email,sito_web,instagram,facebook,linkedin,altro_social,note,stato,fonte,osm_id,updated_at
+demo-firenze-1,Firenze,FI,[DEMO] Hotel del Sole,"Via dei Servi 12, 50122 Firenze",3,+39 055 0000001,info@hoteldelsole-demo.it,https://hoteldelsole-demo.it,@hoteldelsole_demo,hoteldelsole.demo,,,⚠ DEMO — sovrascrivere,da_contattare,manuale,,2026-05-25T00:00:00Z
