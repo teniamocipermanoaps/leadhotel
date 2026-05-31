@@ -171,16 +171,26 @@ def normalize_url(u: str) -> str:
 
 
 def sanitize_phone(p: str) -> str:
-    """Sanitizza il telefono per evitare #ERROR! in Google Sheets.
-    Sheets interpreta valori che iniziano con +/=/-/@ come formule.
-    Sostituiamo il + iniziale con 00 (forma internazionale equivalente).
+    """Sanitizza il telefono per evitare #ERROR! in Google Sheets e
+    pulire i casi di mis-tag OSM (email nel tag phone).
+    - Sheets interpreta valori che iniziano con +/=/-/@ come formule → sostituiamo + con 00.
+    - Se il valore contiene @ è probabilmente un'email mis-taggata → scarta.
+    - Se non contiene almeno 6 cifre (telefono valido minimo) → scarta.
     Esempi: "+39 06 1234567" -> "0039 06 1234567"
-            "+44 20 7946 0958" -> "0044 20 7946 0958"
+            "info@hotel.it" -> ""  (email mis-taggata, scartata)
+            "abc def" -> ""  (no cifre, scartato)
     """
     if not p:
         return ""
     p = p.strip()
     if not p:
+        return ""
+    # Email mis-taggata nel tag phone (errore comune in OSM)
+    if "@" in p:
+        return ""
+    # Deve contenere almeno 6 cifre per essere un telefono plausibile
+    n_digits = sum(1 for c in p if c.isdigit())
+    if n_digits < 6:
         return ""
     # Rimuove caratteri formula-like iniziali
     if p[0] in ("+", "=", "-", "@"):
