@@ -976,6 +976,9 @@ function loadState() {
   } catch (e) { lastSyncAt = null; }
 }
 
+/** Soglia oltre cui non salviamo hotels in localStorage (quota ~5MB → ~2-3k hotel max). */
+const HOTELS_CACHE_LIMIT = 2000;
+
 function saveState() {
   // Hotels: cache offline solo se sotto soglia (oltre, localStorage va in QuotaExceededError)
   try {
