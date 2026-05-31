@@ -977,8 +977,24 @@ function loadState() {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY_HOTELS, JSON.stringify(hotels));
-  localStorage.setItem(STORAGE_KEY_EVENTI, JSON.stringify(eventi));
+  // Hotels: cache offline solo se sotto soglia (oltre, localStorage va in QuotaExceededError)
+  try {
+    if (hotels.length <= HOTELS_CACHE_LIMIT) {
+      localStorage.setItem(STORAGE_KEY_HOTELS, JSON.stringify(hotels));
+    } else {
+      // dataset grande → no cache offline (Sheet è verità, sync ricarica all'apertura)
+      try { localStorage.removeItem(STORAGE_KEY_HOTELS); } catch(_) {}
+    }
+  } catch (e) {
+    console.warn("saveState hotels: cache offline disabilitata (" + e.message + ")");
+    try { localStorage.removeItem(STORAGE_KEY_HOTELS); } catch(_) {}
+  }
+  // Eventi: sempre salvati (piccoli, max ~50 città × ~500 byte = ~25KB)
+  try {
+    localStorage.setItem(STORAGE_KEY_EVENTI, JSON.stringify(eventi));
+  } catch (e) {
+    console.warn("saveState eventi:", e.message);
+  }
 }
 
 function saveConfig() {
