@@ -170,6 +170,28 @@ def normalize_url(u: str) -> str:
     return u
 
 
+def sanitize_phone(p: str) -> str:
+    """Sanitizza il telefono per evitare #ERROR! in Google Sheets.
+    Sheets interpreta valori che iniziano con +/=/-/@ come formule.
+    Sostituiamo il + iniziale con 00 (forma internazionale equivalente).
+    Esempi: "+39 06 1234567" -> "0039 06 1234567"
+            "+44 20 7946 0958" -> "0044 20 7946 0958"
+    """
+    if not p:
+        return ""
+    p = p.strip()
+    if not p:
+        return ""
+    # Rimuove caratteri formula-like iniziali
+    if p[0] in ("+", "=", "-", "@"):
+        if p.startswith("+"):
+            p = "00" + p[1:]
+        else:
+            # Per = - @ improbabili nei telefoni: prefissa con spazio per forzare testo
+            p = " " + p
+    return p
+
+
 def osm_element_to_record(el: dict, city_name: str, provincia: str, min_stars: int) -> HotelRecord | None:
     tags = el.get("tags", {}) or {}
     name = (tags.get("name") or "").strip()
@@ -189,7 +211,7 @@ def osm_element_to_record(el: dict, city_name: str, provincia: str, min_stars: i
         nome_hotel=name,
         indirizzo=build_address(tags),
         stelle=stars if stars > 0 else 2,
-        telefono=(tags.get("phone") or tags.get("contact:phone") or "").strip(),
+        telefono=sanitize_phone(tags.get("phone") or tags.get("contact:phone") or ""),
         email=(tags.get("email") or tags.get("contact:email") or "").strip(),
         sito_web=normalize_url(tags.get("website") or tags.get("contact:website") or "")
     )
