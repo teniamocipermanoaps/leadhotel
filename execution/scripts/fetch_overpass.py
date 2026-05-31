@@ -47,7 +47,7 @@ OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 USER_AGENT = "LeadHotelAPS-DreamTeamClown/1.0 (teniamocipermanoonlus.net)"
 SLEEP_BETWEEN_QUERIES_SEC = 2.0
 HTTP_TIMEOUT_SEC = 60
-BATCH_SIZE_POST = 200  # invio max 200 hotel per POST (limite Apps Script payload)
+BATCH_SIZE_POST = 100  # invio max 100 hotel per POST (Apps Script timeout 30s lato server)
 
 CITIES = [
     ("Roma","RM"),("Milano","MI"),("Napoli","NA"),("Torino","TO"),("Palermo","PA"),
