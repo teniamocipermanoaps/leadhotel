@@ -898,7 +898,7 @@ Il Dream Team Clown svolge attività di clownterapia nelle strutture convenziona
 
 Ad oggi operiamo in oltre 180 strutture socio-sanitarie in tutta Italia.
 
-Il Sogno sarà presente a {{CITTA}} presso:
+Il Dream Team Clown sarà presente a {{CITTA}} presso:
 {{STRUTTURE_LISTA}}
 nelle date: {{DATA_EVENTO}}
 
@@ -1530,9 +1530,12 @@ function socialUrl(net, handle) {
 function populateCitySelects() {
   const cityFilter = $("#cityFilter");
   const hotelFormCity = $("#hotelFormCity");
+  // Ordina alfabeticamente le 50 città (CITIES rimane nell'ordine originale per il render principale,
+  // ma i dropdown filtro devono essere alfabetici per UX usabile)
+  const sortedCities = CITIES.slice().sort((a, b) => a[0].localeCompare(b[0], 'it', { sensitivity: 'base' }));
   cityFilter.innerHTML = '<option value="">🇮🇹 Tutte le città</option>' +
-    CITIES.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
-  hotelFormCity.innerHTML = CITIES.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
+    sortedCities.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
+  hotelFormCity.innerHTML = sortedCities.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
 }
 
 /* ============================================================
