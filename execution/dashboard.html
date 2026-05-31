@@ -874,9 +874,13 @@ const REFERENTE_DEFAULT = {
 /** Oggetto email — usa {{CITTA_UPPER}}. */
 const EMAIL_SUBJECT = 'RICHIESTA SPONSORSHIP - TENIAMOCI PER MANO APS "DREAM TEAM CLOWN" {{CITTA_UPPER}}';
 
+/** Tipi di evento supportati. Default "clownterapia" se vuoto/sconosciuto. */
+const TIPI_EVENTO = ["clownterapia", "festival"];
+
 /** Corpo email — merge fields: {{HOTEL_NOME}} {{CITTA}} {{DATA_EVENTO}}
     {{STRUTTURE_LISTA}} {{REFERENTE_NOME}} {{REFERENTE_RUOLO}} {{REFERENTE_CONTATTO}}
-    {{APS_NOME}} {{APS_SITO}} {{IBAN}} {{CAUSALE}} */
+    {{APS_NOME}} {{APS_SITO}} {{IBAN}} {{CAUSALE}}
+    Template "clownterapia" — per giornate Dream Team in RSA / strutture socio-sanitarie. */
 const EMAIL_TEMPLATE =
 `Spett.le {{HOTEL_NOME}},
 
@@ -898,9 +902,13 @@ Il Sogno sarà presente a {{CITTA}} presso:
 {{STRUTTURE_LISTA}}
 nelle date: {{DATA_EVENTO}}
 
-Con la presente speriamo di poter contare sull'appoggio della Vostra Spettabile Struttura attraverso uno sponsor tecnico, mettendoci a disposizione gratuitamente una camera singola nelle date sopra indicate per il pernottamento del nostro volontario,
+Con la presente speriamo di poter contare sull'appoggio della Vostra Spettabile Struttura, in una delle seguenti forme:
 
-oppure predisponendo una donazione libera sul conto corrente dell'associazione alle seguenti coordinate:
+• come sponsor tecnico, mettendoci a disposizione gratuitamente una camera singola nelle date sopra indicate per il pernottamento del nostro volontario;
+
+• oppure riservandoci una tariffa scontata dedicata sulle camere per le date dell'evento;
+
+• oppure predisponendo una donazione libera sul conto corrente dell'associazione alle seguenti coordinate:
 
 {{APS_IBAN_NOME}}
 IBAN: {{IBAN}}
@@ -909,6 +917,46 @@ Causale: {{CAUSALE}}
 Una donazione di qualsiasi importo può fare davvero la differenza.
 
 Vi ringrazio in anticipo per l'attenzione e mi auguro di condividere con Voi questa straordinaria esperienza, su cui Vi aggiorneremo passo dopo passo. Così potrete verificare con mano quanto di bello realizzerete insieme a noi.
+
+Per qualsiasi domanda, resto a Vostra disposizione.
+
+Cordialmente,
+{{REFERENTE_NOME}}
+{{REFERENTE_RUOLO}}
+{{APS_NOME}}
+{{REFERENTE_CONTATTO}}`;
+
+/** Template "festival" — per eventi pubblici (festival clown, raccolte fondi, manifestazioni). */
+const EMAIL_TEMPLATE_FESTIVAL =
+`Spett.le {{HOTEL_NOME}},
+
+mi chiamo {{REFERENTE_NOME}} e sono {{REFERENTE_RUOLO}} in {{APS_NOME}}.
+
+Vi scrivo perché sarei felicissima di coinvolgervi in un'iniziativa di grande valore sociale e culturale che la nostra associazione organizza a {{CITTA}}.
+
+{{APS_NOME}} ({{APS_SITO}}) è un'associazione nazionale di clownterapia: i nostri volontari, attraverso la formazione e le tecniche di clownerie applicate al contesto socio-sanitario, portano qualche ora di "luce" nella vita di chi lotta ogni giorno per vincere la propria battaglia — bambini nei reparti di oncologia pediatrica, persone in case famiglia, anziani e disabili in istituti di lunga degenza.
+
+Per condividere questa esperienza con il territorio e diffondere il valore della clownterapia, organizziamo eventi pubblici che radunano volontari, famiglie e cittadinanza in momenti di partecipazione collettiva. Operiamo oggi in oltre 180 strutture socio-sanitarie in tutta Italia, e i nostri volontari del Dream Team Clown — formati personalmente da Ginevra Sanguigno (Presidente di Clown One Italia e collaboratrice del Gesundheit! Institute del dott. Patch Adams) — sono il cuore di queste manifestazioni.
+
+L'iniziativa si terrà a {{CITTA}}:
+{{STRUTTURE_LISTA}}
+nelle date: {{DATA_EVENTO}}
+
+Per ospitare i nostri volontari che arrivano da tutta Italia, speriamo di poter contare sull'appoggio della Vostra Spettabile Struttura, in una delle seguenti forme:
+
+• come sponsor tecnico, mettendoci a disposizione gratuitamente una o più camere nelle date dell'evento per il pernottamento dei nostri volontari;
+
+• oppure riservandoci una tariffa scontata dedicata sulle camere per le date dell'evento;
+
+• oppure predisponendo una donazione libera sul conto corrente dell'associazione alle seguenti coordinate:
+
+{{APS_IBAN_NOME}}
+IBAN: {{IBAN}}
+Causale: {{CAUSALE}}
+
+Una donazione di qualsiasi importo può fare davvero la differenza, e in cambio della Vostra disponibilità saremo felici di valorizzare il sostegno della Vostra Struttura nella comunicazione dell'evento (sito web, social, materiali stampati).
+
+Vi ringrazio in anticipo per l'attenzione e mi auguro di condividere con Voi questa bellissima esperienza, su cui Vi aggiorneremo passo dopo passo.
 
 Per qualsiasi domanda, resto a Vostra disposizione.
 
@@ -1132,7 +1180,7 @@ function eventiFromCSV(text) {
   if (rows.length < 2) return {};
   const header = rows[0].map(h => h.trim().toLowerCase());
   const idx = {};
-  ["citta","data_evento","strutture","referente_nome","referente_ruolo","referente_contatto"].forEach(k => { idx[k] = header.indexOf(k); });
+  ["citta","data_evento","tipo_evento","strutture","referente_nome","referente_ruolo","referente_contatto"].forEach(k => { idx[k] = header.indexOf(k); });
   if (idx.citta < 0) return {};
   const out = {};
   for (let r = 1; r < rows.length; r++) {
@@ -1144,8 +1192,11 @@ function eventiFromCSV(text) {
     const strutture = struttureRaw
       ? struttureRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
       : [];
+    const tipoRaw = get("tipo_evento").toLowerCase();
+    const tipo_evento = TIPI_EVENTO.includes(tipoRaw) ? tipoRaw : "clownterapia";
     out[citta] = {
       data_evento: get("data_evento"),
+      tipo_evento: tipo_evento,
       strutture: strutture,
       referente_nome: get("referente_nome"),
       referente_ruolo: get("referente_ruolo"),
@@ -1267,10 +1318,16 @@ function generateEmail(hotel) {
 
   const fill = (tpl) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => tokens[k] !== undefined ? tokens[k] : "{{" + k + "}}");
 
+  // Sceglie il template in base al tipo_evento.
+  // Default "clownterapia" (RSA/strutture sanitarie).
+  // "festival" → eventi pubblici (Smile Clown Festival, raccolte fondi pubbliche).
+  const template = (ev.tipo_evento === "festival") ? EMAIL_TEMPLATE_FESTIVAL : EMAIL_TEMPLATE;
+
   return {
     ok: true,
     subject: fill(EMAIL_SUBJECT),
-    body: fill(EMAIL_TEMPLATE)
+    body: fill(template),
+    tipo_evento: ev.tipo_evento || "clownterapia"
   };
 }
 
@@ -1585,11 +1642,13 @@ function openEmailModal(hotelId) {
   const mailtoUrl = buildMailto(h.email, result.subject, result.body);
   const bodyTooLong = result.body.length > 1800;
 
+  const tipoLabel = result.tipo_evento === "festival" ? "🎪 Festival / evento pubblico" : "🏥 Clownterapia (Dream Team)";
   container.innerHTML = `
     <div class="email-meta">
       <strong>Hotel:</strong> ${escapeHtml(h.nome_hotel)} · ${escapeHtml(h.citta)}<br>
       <strong>Destinatario:</strong> ${h.email ? escapeHtml(h.email) : '<em>nessuna email salvata — aggiungila nel record hotel</em>'}<br>
-      <strong>Stato lead:</strong> <span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato]}</span>
+      <strong>Stato lead:</strong> <span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato]}</span><br>
+      <strong>Template usato:</strong> ${tipoLabel}
     </div>
 
     <div class="email-field">
@@ -1659,6 +1718,25 @@ function buildMailto(to, subject, body) {
    EVENTI MODAL
    ============================================================ */
 function openEventiModal(scrollToCity) {
+  // In modalità sync il modal locale è fuorviante (i dati vengono sovrascritti
+  // al prossimo sync). Reindirizza l'utente al tab Eventi del Sheet.
+  if (isSyncMode()) {
+    if (!config.sheet_edit_url) {
+      toast("In modalità sync gli eventi vanno aggiunti nel tab Eventi del Google Sheet. Configura prima l'URL del Sheet.", "error");
+      return;
+    }
+    // Costruisce URL che apre il Sheet sulla tab Eventi (gid=...).
+    // Il sheet_edit_url di solito ha #gid=0 (tab Hotel). Lo strippiamo e lasciamo che Google apra la prima tab.
+    const baseUrl = config.sheet_edit_url.split('#')[0];
+    const ok = confirm(
+      "In modalità Google Sheet condiviso, gli eventi (data + strutture per città) si aggiungono direttamente nel tab \"Eventi\" del foglio.\n\n" +
+      "Apertura del Sheet — vai sulla tab \"Eventi\" in basso e aggiungi una riga per ogni città in cui sarà presente il Dream Team Clown.\n\n" +
+      "Formato strutture: separate da PUNTO E VIRGOLA (es: \"RSA Villa Canova; RSA Villa Giselle\").\n\n" +
+      "Continua?"
+    );
+    if (ok) window.open(baseUrl, "_blank");
+    return;
+  }
   renderEventiList();
   openModal("eventiModal");
   if (scrollToCity) {
