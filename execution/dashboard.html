@@ -835,6 +835,11 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 <script>
 'use strict';
 
+/** Identificativo build per verificare quale versione è attiva.
+    Aggiornare manualmente a ogni modifica significativa.
+    Visibile in basso a destra della dashboard + console al boot. */
+const BUILD_VERSION = "2026-06-01-multi-template-sorted-cities";
+
 /* ============================================================
    COSTANTI CONFIGURABILI
    Modifica qui per cambiare: città, template email, dati APS.
@@ -2154,6 +2159,13 @@ function wireEvents() {
    BOOT
    ============================================================ */
 function init() {
+  console.log("%c[Dream Team Clown · Lead Hotel] build " + BUILD_VERSION, "color:#c44536;font-weight:bold;");
+  // Indicatore versione in basso a destra (per verificare quale build è attiva online vs locale)
+  const verEl = document.createElement("div");
+  verEl.style.cssText = "position:fixed;bottom:6px;right:8px;font-size:10px;color:#9b9b9b;font-family:monospace;z-index:5;pointer-events:none;background:rgba(255,255,255,0.7);padding:2px 6px;border-radius:4px;";
+  verEl.textContent = "build " + BUILD_VERSION;
+  document.body.appendChild(verEl);
+
   loadState();
   populateCitySelects();
   wireEvents();
