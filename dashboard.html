@@ -842,7 +842,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-06-02-lazy-render-mobile";
+const BUILD_VERSION = "2026-06-04-extended-145-cities";
 
 /* ============================================================
    CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
@@ -860,8 +860,11 @@ const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1j9vCbqY2
    Modifica qui per cambiare: città, template email, dati APS.
    ============================================================ */
 
-/** Le 50 città del progetto (Comune → Provincia ISO 3166-2:IT). */
+/** Lista città del progetto (Comune → Provincia ISO 3166-2:IT).
+    50 città principali + ~93 comuni locali estesi. Vedi fetch_overpass.py per la
+    distinzione CITIES_MAIN / CITIES_EXTENDED utilizzata dai 2 workflow paralleli. */
 const CITIES = [
+  // === 50 città principali (workflow main) ===
   ["Roma","RM"],["Milano","MI"],["Napoli","NA"],["Torino","TO"],["Palermo","PA"],
   ["Genova","GE"],["Bologna","BO"],["Firenze","FI"],["Bari","BA"],["Catania","CT"],
   ["Venezia","VE"],["Verona","VR"],["Messina","ME"],["Padova","PD"],["Trieste","TS"],
@@ -872,7 +875,47 @@ const CITIES = [
   ["Siracusa","SR"],["Pescara","PE"],["Bergamo","BG"],["Forlì","FC"],["Trento","TN"],
   ["Vicenza","VI"],["Terni","TR"],["Bolzano","BZ"],["Novara","NO"],["Piacenza","PC"],
   ["Ancona","AN"],["Andria","BT"],["Arezzo","AR"],["Udine","UD"],["Cesena","FC"],
-  ["Lecce","LE"]
+  ["Lecce","LE"],
+  // === ~93 comuni locali estesi (workflow extended) ===
+  // Campania
+  ["Giugliano in Campania","NA"],["Lacco Ameno","NA"],["Nola","NA"],["Sorrento","NA"],
+  ["Vico Equense","NA"],["Pozzuoli","NA"],["San Giorgio a Cremano","NA"],["Afragola","NA"],
+  ["Caivano","NA"],["Castel Volturno","CE"],["Torre del Greco","NA"],["Cicciano","NA"],
+  ["Pompei","NA"],["Pomigliano d'Arco","NA"],["Scisciano","NA"],["Avellino","AV"],
+  ["Nocera Inferiore","SA"],["Scafati","SA"],["Angri","SA"],["Cava de' Tirreni","SA"],
+  ["Maddaloni","CE"],["San Clemente","CE"],["Casapulla","CE"],["Aversa","CE"],
+  ["Marcianise","CE"],["Sessa Aurunca","CE"],["Mondragone","CE"],
+  // Lazio
+  ["Frosinone","FR"],["Alatri","FR"],["Sora","FR"],["Isola del Liri","FR"],
+  ["San Giorgio a Liri","FR"],["Ceccano","FR"],["Veroli","FR"],["Ceprano","FR"],
+  ["Fiuggi","FR"],["Colleferro","RM"],["Velletri","RM"],["Albano Laziale","RM"],
+  ["Lanuvio","RM"],["Cisterna di Latina","LT"],["Minturno","LT"],["Castelforte","LT"],
+  ["Santi Cosma e Damiano","LT"],["Formia","LT"],
+  // Lombardia
+  ["Melzo","MI"],["Cene","BG"],["Appiano Gentile","CO"],["Cantù","CO"],
+  // Piemonte
+  ["Settimo Torinese","TO"],
+  // Veneto
+  ["Monteforte d'Alpone","VR"],["Sommacampagna","VR"],["Mestre","VE"],["Zelarino","VE"],
+  ["Mogliano Veneto","TV"],["Scorzè","VE"],["Chirignago","VE"],["Cazzago di Pianiga","VE"],
+  ["Trebaseleghe","PD"],
+  // Puglia
+  ["Monopoli","BA"],["Fasano","BR"],["San Giovanni Rotondo","FG"],["Manfredonia","FG"],
+  ["Monte Sant'Angelo","FG"],["Torremaggiore","FG"],
+  // Emilia-Romagna
+  ["Carpi","MO"],
+  // Sicilia
+  ["Taormina","ME"],["Milazzo","ME"],["Sant'Agata di Militello","ME"],["Capo d'Orlando","ME"],
+  ["Nizza di Sicilia","ME"],["Furci Siculo","ME"],["Santa Marina Salina","ME"],
+  ["Ragusa","RG"],["Vittoria","RG"],["Comiso","RG"],["Pozzallo","RG"],
+  ["Augusta","SR"],["Lentini","SR"],["Termini Imerese","PA"],["Bagheria","PA"],
+  ["Gravina di Catania","CT"],["Caltagirone","CT"],["Acireale","CT"],
+  ["Trapani","TP"],["Valderice","TP"],["Xitta","TP"],["Enna","EN"],["Troina","EN"],
+  // Sardegna
+  ["Sestu","CA"],["Capoterra","CA"],["Quartu Sant'Elena","CA"],["Pula","CA"],
+  ["Ussana","CA"],["Selargius","CA"],
+  // Toscana
+  ["Settignano","FI"]
 ];
 
 /** Coordinate APS — usate nel template email. */
