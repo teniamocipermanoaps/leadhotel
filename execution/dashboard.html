@@ -842,7 +842,18 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-06-01-multi-eventi-citta";
+const BUILD_VERSION = "2026-06-02-default-shared-config";
+
+/* ============================================================
+   CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
+   senza dover configurare URL nel loro browser.
+   Sono URL pubblici CSV/Sheet di Google → nessun rischio di sicurezza.
+   Per disattivare la default + tornare modalità locale: clic su "⚙ Sorgente
+   dati" → svuota i campi → Salva.
+   ============================================================ */
+const DEFAULT_HOTEL_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkQPCqdtbNREEYL5PnMR4H7RZOd1lFxhxjcLhBMMuu7LBcm4GqwG3TvI5LvMyxDgK_vzeQSb8_l8H6/pub?gid=0&single=true&output=csv";
+const DEFAULT_EVENTI_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkQPCqdtbNREEYL5PnMR4H7RZOd1lFxhxjcLhBMMuu7LBcm4GqwG3TvI5LvMyxDgK_vzeQSb8_l8H6/pub?gid=453288955&single=true&output=csv";
+const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1j9vCbqY2DK8sR1ZYH_ZWHBpY3lZhQ0Fg-NDS43XHg8Q/edit?usp=drive_link";
 
 /* ============================================================
    COSTANTI CONFIGURABILI
@@ -1028,6 +1039,12 @@ function loadState() {
     const cfg = localStorage.getItem(STORAGE_KEY_CONFIG);
     config = cfg ? JSON.parse(cfg) : {};
   } catch (e) { config = {}; }
+  // Se l'utente non ha mai configurato URL custom, usa i default condivisi.
+  // Questo permette a TUTTE le colleghe di vedere i dati senza setup.
+  // L'utente può sempre fare override via modal "⚙ Sorgente dati".
+  if (!config.hotel_csv_url && DEFAULT_HOTEL_CSV_URL) config.hotel_csv_url = DEFAULT_HOTEL_CSV_URL;
+  if (!config.eventi_csv_url && DEFAULT_EVENTI_CSV_URL) config.eventi_csv_url = DEFAULT_EVENTI_CSV_URL;
+  if (!config.sheet_edit_url && DEFAULT_SHEET_EDIT_URL) config.sheet_edit_url = DEFAULT_SHEET_EDIT_URL;
   try {
     lastSyncAt = localStorage.getItem(STORAGE_KEY_SYNC) || null;
   } catch (e) { lastSyncAt = null; }
