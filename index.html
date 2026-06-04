@@ -2,8 +2,15 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=dashboard.html">
 <title>Lead Hotel APS — Reindirizzamento</title>
+<script>
+  // Redirect a dashboard.html propagando query string e hash (così ?v=... cache-bust funziona dalla root).
+  var target = "dashboard.html" + (window.location.search || "") + (window.location.hash || "");
+  window.location.replace(target);
+</script>
+<noscript>
+  <meta http-equiv="refresh" content="0; url=dashboard.html">
+</noscript>
 </head>
 <body>
 <p>Reindirizzamento in corso... Se non vieni reindirizzato, <a href="dashboard.html">clicca qui per aprire la dashboard</a>.</p>
