@@ -842,7 +842,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-06-02-default-shared-config";
+const BUILD_VERSION = "2026-06-02-lazy-render-mobile";
 
 /* ============================================================
    CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
@@ -1431,7 +1431,53 @@ function renderStats() {
   $("#statPositive").textContent = positive;
 }
 
+/** Soglia oltre la quale la dashboard NON renderizza tutti gli hotel insieme
+    ma richiede selezione esplicita città / ricerca testo per evitare freeze browser su mobile. */
+const LAZY_RENDER_THRESHOLD = 2000;
+
 function renderCityList() {
+  const cityFilterValue = $("#cityFilter").value;
+  const searchValue = $("#searchBox").value.trim();
+  const statusValue = $("#statusFilter").value;
+  const container = $("#cityList");
+
+  // === LAZY RENDER: dataset grande senza filtri → mostra invece selettore città ===
+  if (hotels.length > LAZY_RENDER_THRESHOLD && !cityFilterValue && !searchValue && !statusValue) {
+    const byCityCount = {};
+    for (const h of hotels) byCityCount[h.citta] = (byCityCount[h.citta] || 0) + 1;
+    const citiesWithHotels = CITIES.filter(c => byCityCount[c[0]] > 0)
+      .map(c => ({ city: c[0], prov: c[1], count: byCityCount[c[0]] }));
+    container.innerHTML = `
+      <div class="no-results" style="padding:2rem 1.5rem;">
+        <p style="font-size:1.1rem;margin:0 0 0.5rem;">
+          <strong>🎈 Dashboard pronta</strong> · ${hotels.length.toLocaleString('it')} hotel caricati su ${citiesWithHotels.length} città
+        </p>
+        <p style="margin:0 0 1.5rem;color:var(--c-text-muted);font-size:0.92rem;">
+          Per velocità, gli hotel non vengono mostrati tutti insieme.
+          Seleziona una città dal filtro in alto, oppure scrivi nella ricerca, per vedere i risultati.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;justify-content:center;max-width:900px;margin:0 auto;">
+          ${citiesWithHotels.map(c => `
+            <button class="ghost small" data-quick-city="${escapeHtml(c.city)}"
+              style="background:var(--c-surface);border:1px solid var(--c-border);">
+              ${escapeHtml(c.city)} <span class="muted">(${c.prov}) · ${c.count}</span>
+            </button>`).join("")}
+        </div>
+      </div>`;
+    // Wire click sui bottoni quick-city → imposta filtro città
+    container.querySelectorAll("[data-quick-city]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        $("#cityFilter").value = btn.dataset.quickCity;
+        renderAll();
+        // Scroll al top per mostrare i risultati
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+    $("#noResults").hidden = true;
+    return;
+  }
+
+  // === Render normale (dataset piccolo o filtro città attivo) ===
   const filtered = applyFilters(hotels);
   const byCity = {};
   for (const h of hotels) {
@@ -1443,8 +1489,6 @@ function renderCityList() {
     byCity[h.citta].visible.push(h);
   }
 
-  const cityFilterValue = $("#cityFilter").value;
-  const container = $("#cityList");
   container.innerHTML = "";
 
   // Mostra le città in ordine canonico (lista CITIES) — solo se hanno match coi filtri
@@ -1474,7 +1518,7 @@ function renderCityList() {
   if (hotels.length === 0 && !cityFilterValue) {
     container.innerHTML = `
       <div class="no-results">
-        <p style="font-size:1.05rem;margin:0 0 0.5rem;"><strong>Benvenuta nella dashboard 🎈</strong></p>
+        <p style="font-size:1.05rem;margin:0 0 0.5rem;"><strong>Benvenuto nella dashboard 🎈</strong></p>
         <p style="margin:0 0 1rem;">Nessun hotel ancora caricato.</p>
         <p style="font-size:0.9rem;">Inizia con <strong>+ Aggiungi hotel</strong>, <strong>📥 Importa CSV</strong>, oppure <strong>▶ Carica demo</strong> per vedere la dashboard in azione.</p>
       </div>`;
