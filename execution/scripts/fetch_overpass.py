@@ -43,10 +43,15 @@ if hasattr(sys.stdout, "reconfigure"):
 # CONFIG
 # ============================================================
 
-OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
+OVERPASS_ENDPOINTS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",
+]
 USER_AGENT = "LeadHotelAPS-DreamTeamClown/1.0 (teniamocipermanoonlus.net)"
-SLEEP_BETWEEN_QUERIES_SEC = 2.0
-HTTP_TIMEOUT_SEC = 60
+SLEEP_BETWEEN_QUERIES_SEC = 5.0      # ↑ era 2.0: ridotto rate-limit HTTP 429
+RETRY_BACKOFF_SEC = [5, 15, 45]      # ritentativi su 429/504 (3 tentativi totali)
+HTTP_TIMEOUT_SEC = 90                 # ↑ era 60: più tolleranza server lento
 BATCH_SIZE_POST = 100  # invio max 100 hotel per POST (Apps Script timeout 30s lato server)
 
 CITIES_MAIN = [
@@ -161,21 +166,48 @@ out tags center;
 
 
 def fetch_overpass(query: str) -> dict:
+    """Esegue query Overpass con retry esponenziale su HTTP 429/504 e fallback su endpoint alternativi.
+    - Round-robin tra OVERPASS_ENDPOINTS (3 mirror).
+    - Su 429 (rate limit) o 504 (timeout): backoff progressivo (5s, 15s, 45s) e tentativo successivo
+      su endpoint diverso.
+    - Su altri errori: raise immediato (no retry).
+    Totale: fino a len(RETRY_BACKOFF_SEC)+1 = 4 tentativi.
+    """
     data = ("data=" + urllib.parse.quote(query)).encode("utf-8")
-    req = urllib.request.Request(
-        OVERPASS_ENDPOINT,
-        data=data,
-        headers={"User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SEC) as resp:
-            payload = resp.read().decode("utf-8")
-            return json.loads(payload)
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-        raise RuntimeError(f"Overpass HTTP {e.code}: {body[:200]}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Overpass URL error: {e}") from e
+    last_err = None
+    for attempt in range(len(RETRY_BACKOFF_SEC) + 1):
+        endpoint = OVERPASS_ENDPOINTS[attempt % len(OVERPASS_ENDPOINTS)]
+        req = urllib.request.Request(
+            endpoint,
+            data=data,
+            headers={"User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_SEC) as resp:
+                payload = resp.read().decode("utf-8")
+                return json.loads(payload)
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+            last_err = RuntimeError(f"Overpass HTTP {e.code} ({endpoint}): {body[:200]}")
+            # Retry solo su 429 (rate limit) o 5xx (server overloaded)
+            if e.code in (429, 500, 502, 503, 504) and attempt < len(RETRY_BACKOFF_SEC):
+                wait_s = RETRY_BACKOFF_SEC[attempt]
+                print(f"    ↳ HTTP {e.code} su {endpoint.split('/')[2]}, retry tra {wait_s}s "
+                      f"(tentativo {attempt+2}/{len(RETRY_BACKOFF_SEC)+1})", flush=True)
+                time.sleep(wait_s)
+                continue
+            raise last_err
+        except urllib.error.URLError as e:
+            last_err = RuntimeError(f"Overpass URL error ({endpoint}): {e}")
+            if attempt < len(RETRY_BACKOFF_SEC):
+                wait_s = RETRY_BACKOFF_SEC[attempt]
+                print(f"    ↳ URL error su {endpoint.split('/')[2]}, retry tra {wait_s}s "
+                      f"(tentativo {attempt+2}/{len(RETRY_BACKOFF_SEC)+1})", flush=True)
+                time.sleep(wait_s)
+                continue
+            raise last_err
+    # Non dovremmo arrivare qui, ma per sicurezza
+    raise last_err if last_err else RuntimeError("Overpass: tutti i tentativi falliti")
 
 
 # ============================================================
