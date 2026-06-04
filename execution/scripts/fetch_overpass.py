@@ -49,7 +49,7 @@ SLEEP_BETWEEN_QUERIES_SEC = 2.0
 HTTP_TIMEOUT_SEC = 60
 BATCH_SIZE_POST = 100  # invio max 100 hotel per POST (Apps Script timeout 30s lato server)
 
-CITIES = [
+CITIES_MAIN = [
     ("Roma","RM"),("Milano","MI"),("Napoli","NA"),("Torino","TO"),("Palermo","PA"),
     ("Genova","GE"),("Bologna","BO"),("Firenze","FI"),("Bari","BA"),("Catania","CT"),
     ("Venezia","VE"),("Verona","VR"),("Messina","ME"),("Padova","PD"),("Trieste","TS"),
@@ -62,6 +62,58 @@ CITIES = [
     ("Ancona","AN"),("Andria","BT"),("Arezzo","AR"),("Udine","UD"),("Cesena","FC"),
     ("Lecce","LE"),
 ]
+
+# Lista estesa: comuni locali e specifici di interesse APS (~93 voci, esclusi i 3 già presenti
+# in CITIES_MAIN: Latina/Siracusa/Cagliari). Include alcune frazioni che potrebbero non avere
+# boundary OSM dedicati (Mestre/Zelarino/Chirignago/Cazzago/Xitta/Settignano) → in tal caso
+# Overpass restituirà 0 hotel per quelle voci.
+CITIES_EXTENDED = [
+    # Campania
+    ("Giugliano in Campania","NA"),("Lacco Ameno","NA"),("Nola","NA"),("Sorrento","NA"),
+    ("Vico Equense","NA"),("Pozzuoli","NA"),("San Giorgio a Cremano","NA"),("Afragola","NA"),
+    ("Caivano","NA"),("Castel Volturno","CE"),("Torre del Greco","NA"),("Cicciano","NA"),
+    ("Pompei","NA"),("Pomigliano d'Arco","NA"),("Scisciano","NA"),("Avellino","AV"),
+    ("Nocera Inferiore","SA"),("Scafati","SA"),("Angri","SA"),("Cava de' Tirreni","SA"),
+    ("Maddaloni","CE"),("San Clemente","CE"),("Casapulla","CE"),("Aversa","CE"),
+    ("Marcianise","CE"),("Sessa Aurunca","CE"),("Mondragone","CE"),
+    # Lazio
+    ("Frosinone","FR"),("Alatri","FR"),("Sora","FR"),("Isola del Liri","FR"),
+    ("San Giorgio a Liri","FR"),("Ceccano","FR"),("Veroli","FR"),("Ceprano","FR"),
+    ("Fiuggi","FR"),("Colleferro","RM"),("Velletri","RM"),("Albano Laziale","RM"),
+    ("Lanuvio","RM"),("Cisterna di Latina","LT"),("Minturno","LT"),("Castelforte","LT"),
+    ("Santi Cosma e Damiano","LT"),("Formia","LT"),
+    # Lombardia
+    ("Melzo","MI"),("Cene","BG"),("Appiano Gentile","CO"),("Cantù","CO"),
+    # Piemonte
+    ("Settimo Torinese","TO"),
+    # Veneto (include frazioni di Venezia)
+    ("Monteforte d'Alpone","VR"),("Sommacampagna","VR"),("Mestre","VE"),("Zelarino","VE"),
+    ("Mogliano Veneto","TV"),("Scorzè","VE"),("Chirignago","VE"),("Cazzago di Pianiga","VE"),
+    ("Trebaseleghe","PD"),
+    # Puglia
+    ("Monopoli","BA"),("Fasano","BR"),("San Giovanni Rotondo","FG"),("Manfredonia","FG"),
+    ("Monte Sant'Angelo","FG"),("Torremaggiore","FG"),
+    # Emilia-Romagna
+    ("Carpi","MO"),
+    # Sicilia
+    ("Taormina","ME"),("Milazzo","ME"),("Sant'Agata di Militello","ME"),("Capo d'Orlando","ME"),
+    ("Nizza di Sicilia","ME"),("Furci Siculo","ME"),("Santa Marina Salina","ME"),
+    ("Ragusa","RG"),("Vittoria","RG"),("Comiso","RG"),("Pozzallo","RG"),
+    ("Augusta","SR"),("Lentini","SR"),("Termini Imerese","PA"),("Bagheria","PA"),
+    ("Gravina di Catania","CT"),("Caltagirone","CT"),("Acireale","CT"),
+    ("Trapani","TP"),("Valderice","TP"),("Xitta","TP"),("Enna","EN"),("Troina","EN"),
+    # Sardegna (provincia CA tradizionale come da scelta utente)
+    ("Sestu","CA"),("Capoterra","CA"),("Quartu Sant'Elena","CA"),("Pula","CA"),
+    ("Ussana","CA"),("Selargius","CA"),
+    # Toscana (frazione di Firenze)
+    ("Settignano","FI"),
+]
+
+# Tutto il dataset disponibile per il flag --dataset all
+CITIES_ALL = CITIES_MAIN + CITIES_EXTENDED
+
+# Default: dataset main (compat retroattivo)
+CITIES = CITIES_MAIN
 
 # Tag OSM considerati "hotel ≥2 stelle" candidati
 HOTEL_TOURISM_TAGS = ("hotel", "guest_house", "hostel", "motel")
@@ -92,11 +144,13 @@ class HotelRecord:
 # ============================================================
 
 def build_overpass_query(city_name: str) -> str:
-    """Query: tutti gli hotel/guest_house/hostel/motel dentro il poligono area:'<city>',IT."""
+    """Query: tutti gli hotel/guest_house/hostel/motel dentro il poligono area:'<city>',IT.
+    admin_level=8 → comuni; admin_level=9-10 → frazioni/quartieri (Mestre, Settignano, ecc.).
+    """
     tags_filter = "|".join(HOTEL_TOURISM_TAGS)
     return f"""
 [out:json][timeout:50];
-area["name"="{city_name}"]["boundary"="administrative"]["admin_level"~"^(6|8)$"]->.searchArea;
+area["name"="{city_name}"]["boundary"="administrative"]["admin_level"~"^(8|9|10)$"]->.searchArea;
 (
   node["tourism"~"^({tags_filter})$"](area.searchArea);
   way["tourism"~"^({tags_filter})$"](area.searchArea);
@@ -274,11 +328,20 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Non inviare ad Apps Script; stampa JSON a stdout")
     parser.add_argument("--city", help="Limita a una sola città (per test). Es: --city Firenze")
     parser.add_argument("--min-stars", type=int, default=2, help="Soglia stelle minime per inclusione (default: 2)")
+    parser.add_argument("--dataset", choices=["main","extended","all"], default="main",
+                        help="Quale lista città processare: main (50 originali), extended (~93 nuove), all (entrambe)")
     args = parser.parse_args()
 
-    cities = CITIES
+    if args.dataset == "extended":
+        source_cities = CITIES_EXTENDED
+    elif args.dataset == "all":
+        source_cities = CITIES_ALL
+    else:
+        source_cities = CITIES_MAIN
+
+    cities = source_cities
     if args.city:
-        cities = [c for c in CITIES if c[0].lower() == args.city.lower()]
+        cities = [c for c in source_cities if c[0].lower() == args.city.lower()]
         if not cities:
             print(f"Città '{args.city}' non in lista", file=sys.stderr)
             sys.exit(2)
