@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dream Team Clown · Lead Hotel — Teniamoci per Mano APS</title>
+<!-- Favicon inline SVG (palloncino rosso) — evita 404 favicon.ico -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎈%3C/text%3E%3C/svg%3E">
+<!-- Aggiorna anche BUILD_VERSION del giorno (in script) se modifichi sostanzialmente la dashboard -->
+
 <style>
 /* =========================================================================
    DREAM TEAM CLOWN — Dashboard Lead Hotel
@@ -838,7 +842,18 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-06-01-multi-template-sorted-cities";
+const BUILD_VERSION = "2026-06-02-default-shared-config";
+
+/* ============================================================
+   CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
+   senza dover configurare URL nel loro browser.
+   Sono URL pubblici CSV/Sheet di Google → nessun rischio di sicurezza.
+   Per disattivare la default + tornare modalità locale: clic su "⚙ Sorgente
+   dati" → svuota i campi → Salva.
+   ============================================================ */
+const DEFAULT_HOTEL_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkQPCqdtbNREEYL5PnMR4H7RZOd1lFxhxjcLhBMMuu7LBcm4GqwG3TvI5LvMyxDgK_vzeQSb8_l8H6/pub?gid=0&single=true&output=csv";
+const DEFAULT_EVENTI_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTkQPCqdtbNREEYL5PnMR4H7RZOd1lFxhxjcLhBMMuu7LBcm4GqwG3TvI5LvMyxDgK_vzeQSb8_l8H6/pub?gid=453288955&single=true&output=csv";
+const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1j9vCbqY2DK8sR1ZYH_ZWHBpY3lZhQ0Fg-NDS43XHg8Q/edit?usp=drive_link";
 
 /* ============================================================
    COSTANTI CONFIGURABILI
@@ -1024,6 +1039,12 @@ function loadState() {
     const cfg = localStorage.getItem(STORAGE_KEY_CONFIG);
     config = cfg ? JSON.parse(cfg) : {};
   } catch (e) { config = {}; }
+  // Se l'utente non ha mai configurato URL custom, usa i default condivisi.
+  // Questo permette a TUTTE le colleghe di vedere i dati senza setup.
+  // L'utente può sempre fare override via modal "⚙ Sorgente dati".
+  if (!config.hotel_csv_url && DEFAULT_HOTEL_CSV_URL) config.hotel_csv_url = DEFAULT_HOTEL_CSV_URL;
+  if (!config.eventi_csv_url && DEFAULT_EVENTI_CSV_URL) config.eventi_csv_url = DEFAULT_EVENTI_CSV_URL;
+  if (!config.sheet_edit_url && DEFAULT_SHEET_EDIT_URL) config.sheet_edit_url = DEFAULT_SHEET_EDIT_URL;
   try {
     lastSyncAt = localStorage.getItem(STORAGE_KEY_SYNC) || null;
   } catch (e) { lastSyncAt = null; }
@@ -1187,28 +1208,55 @@ function eventiFromCSV(text) {
   const idx = {};
   ["citta","data_evento","tipo_evento","strutture","referente_nome","referente_ruolo","referente_contatto"].forEach(k => { idx[k] = header.indexOf(k); });
   if (idx.citta < 0) return {};
+  // Schema v3: { "Caserta": [evento1, evento2, ...], "Firenze": [evento1] }
+  // Più righe nel tab Eventi con stessa città → lista cumulativa di eventi.
   const out = {};
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     const get = (k) => idx[k] >= 0 ? (row[idx[k]] || "").trim() : "";
     const citta = normalizeCityName(get("citta"));
     if (!citta) continue;
+    const dataEvento = get("data_evento");
+    if (!dataEvento) continue; // riga senza data evento = ignorata
     const struttureRaw = get("strutture");
     const strutture = struttureRaw
       ? struttureRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
       : [];
     const tipoRaw = get("tipo_evento").toLowerCase();
     const tipo_evento = TIPI_EVENTO.includes(tipoRaw) ? tipoRaw : "clownterapia";
-    out[citta] = {
-      data_evento: get("data_evento"),
+    const evento = {
+      data_evento: dataEvento,
       tipo_evento: tipo_evento,
       strutture: strutture,
       referente_nome: get("referente_nome"),
       referente_ruolo: get("referente_ruolo"),
       referente_contatto: get("referente_contatto")
     };
+    if (!out[citta]) out[citta] = [];
+    out[citta].push(evento);
   }
   return out;
+}
+
+/** Restituisce l'array eventi per una città. Sempre array (vuoto se nessuno).
+    Compatibile con il vecchio schema (singolo evento per città) — vedi migrazione automatica. */
+function getEventiPerCitta(citta) {
+  const v = eventi[citta];
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  // Legacy: vecchio schema con oggetto singolo → wrap in array
+  if (v.data_evento) return [v];
+  return [];
+}
+
+/** Etichetta human-readable per identificare un evento nel dropdown. */
+function labelEvento(ev) {
+  const tipoLabel = ev.tipo_evento === "festival" ? "🎪 festival" : "🏥 clownterapia";
+  const data = ev.data_evento || "(senza data)";
+  const struttPreview = (ev.strutture && ev.strutture.length)
+    ? " · " + ev.strutture[0].slice(0, 40) + (ev.strutture[0].length > 40 ? "…" : "")
+    : "";
+  return `${data} ${tipoLabel}${struttPreview}`;
 }
 
 async function syncFromSheet() {
@@ -1294,8 +1342,16 @@ function normalizeCityName(s) {
 /* ============================================================
    EMAIL GENERATION
    ============================================================ */
-function generateEmail(hotel) {
-  const ev = eventi[hotel.citta];
+function generateEmail(hotel, eventoOverride) {
+  // Se ricevo un evento esplicito (override) lo uso; altrimenti pesco il primo evento della città.
+  let ev = eventoOverride;
+  if (!ev) {
+    const list = getEventiPerCitta(hotel.citta);
+    if (!list.length) {
+      return { ok: false, missing: hotel.citta };
+    }
+    ev = list[0];
+  }
   if (!ev || !ev.data_evento) {
     return { ok: false, missing: hotel.citta };
   }
@@ -1427,14 +1483,14 @@ function renderCityList() {
 }
 
 function renderCityBlock(city, prov, allRows, visibleRows, extra=false) {
-  const ev = eventi[city];
-  const eventOk = ev && ev.data_evento;
+  const eventiArr = getEventiPerCitta(city);
+  const eventOk = eventiArr.length > 0;
   const details = document.createElement("details");
   details.className = "city-block";
   if (visibleRows.length > 0) details.open = true;
 
   const eventBadgeHtml = eventOk
-    ? `<span class="event-badge ok">📅 Evento configurato</span>`
+    ? `<span class="event-badge ok">📅 ${eventiArr.length > 1 ? eventiArr.length + ' eventi configurati' : 'Evento configurato'}</span>`
     : `<span class="event-badge missing">📅 Evento non configurato</span>`;
 
   const counterClass = visibleRows.length > 0 ? "" : "zero";
@@ -1617,12 +1673,16 @@ function deleteHotelById(id) {
 /* ============================================================
    EMAIL MODAL
    ============================================================ */
-function openEmailModal(hotelId) {
+function openEmailModal(hotelId, eventoIndex) {
   const h = hotels.find(x => x.id === hotelId);
   if (!h) return;
   const container = $("#emailBodyContainer");
   const footer = $("#emailFooter");
-  const result = generateEmail(h);
+  const eventiList = getEventiPerCitta(h.citta);
+  // Se non specificato, default = primo evento (0). Clamp per sicurezza.
+  let selectedIdx = (typeof eventoIndex === "number" && eventoIndex >= 0 && eventoIndex < eventiList.length) ? eventoIndex : 0;
+  const evChoice = eventiList[selectedIdx];
+  const result = generateEmail(h, evChoice);
 
   if (!result.ok) {
     container.innerHTML = `
@@ -1651,6 +1711,16 @@ function openEmailModal(hotelId) {
   const bodyTooLong = result.body.length > 1800;
 
   const tipoLabel = result.tipo_evento === "festival" ? "🎪 Festival / evento pubblico" : "🏥 Clownterapia (Dream Team)";
+  // Dropdown selettore eventi (visibile solo se ci sono >1 eventi per la città)
+  const eventSelector = eventiList.length > 1 ? `
+    <div class="email-field" style="margin-bottom:0.6rem;">
+      <label>📅 Scegli evento per ${escapeHtml(h.citta)} (${eventiList.length} disponibili)</label>
+      <select id="emailEventSelect" style="width:100%;font-size:0.95rem;">
+        ${eventiList.map((ev, i) => `<option value="${i}" ${i === selectedIdx ? 'selected' : ''}>${escapeHtml(labelEvento(ev))}</option>`).join("")}
+      </select>
+      <p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Cambia evento → il testo email si aggiorna sotto.</p>
+    </div>
+  ` : "";
   container.innerHTML = `
     <div class="email-meta">
       <strong>Hotel:</strong> ${escapeHtml(h.nome_hotel)} · ${escapeHtml(h.citta)}<br>
@@ -1658,6 +1728,7 @@ function openEmailModal(hotelId) {
       <strong>Stato lead:</strong> <span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato]}</span><br>
       <strong>Template usato:</strong> ${tipoLabel}
     </div>
+    ${eventSelector}
 
     <div class="email-field">
       <label>Oggetto</label>
@@ -1695,6 +1766,11 @@ function openEmailModal(hotelId) {
     document.getElementById("btnCopyBody")?.addEventListener("click", () => {
       navigator.clipboard.writeText($("#emailBody").value).then(() => toast("Testo copiato", "success"));
     });
+    // Cambio evento via dropdown → rigenera modal con altro evento
+    document.getElementById("emailEventSelect")?.addEventListener("change", (e) => {
+      const newIdx = parseInt(e.target.value, 10);
+      openEmailModal(hotelId, newIdx);
+    });
     $$("[data-set-stato]").forEach(b => {
       b.addEventListener("click", () => {
         const id = b.dataset.hotelId;
@@ -1705,7 +1781,7 @@ function openEmailModal(hotelId) {
           hotels[i].updatedAt = new Date().toISOString();
           saveState();
           renderAll();
-          openEmailModal(id);
+          openEmailModal(id, selectedIdx);
           toast("Stato aggiornato: " + STATO_LABEL[s], "info");
         }
       });
