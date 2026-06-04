@@ -1,9 +1,9 @@
-name: Fetch Hotels MAIN (50 città principali → Google Sheet)
+name: Fetch Hotels EXTENDED (~93 comuni locali → Google Sheet)
 
 on:
-  # Domenica notte (02:00 UTC ≈ 04:00 ora italiana estiva, 03:00 ora invernale)
+  # Domenica notte (02:30 UTC, ~30 min dopo il main per non saturare Overpass)
   schedule:
-    - cron: "0 2 * * 0"
+    - cron: "30 2 * * 0"
 
   # Esecuzione manuale dalla UI GitHub Actions
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
         required: false
         default: "false"
       city:
-        description: "Limita a una sola città (opzionale, es: Firenze)"
+        description: "Limita a una sola città (opzionale, es: Sorrento)"
         required: false
         default: ""
 
@@ -31,12 +31,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run fetch_overpass (dataset main)
+      - name: Run fetch_overpass (dataset extended)
         env:
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
           APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
         run: |
-          ARGS="--dataset main"
+          ARGS="--dataset extended"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
