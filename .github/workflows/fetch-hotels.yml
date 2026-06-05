@@ -20,7 +20,7 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60  # main 50 città richiede ~20-30 min, margine per retry/backoff
 
     steps:
       - name: Checkout
