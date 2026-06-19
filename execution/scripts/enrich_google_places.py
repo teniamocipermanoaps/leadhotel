@@ -55,8 +55,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 USER_AGENT = "LeadHotelAPS-DreamTeamClown-Enrichment/1.0 (teniamocipermanoonlus.net)"
 HTTP_TIMEOUT_SEC = 30
+APPS_SCRIPT_TIMEOUT_SEC = 180  # Apps Script può richiedere fino a 3 min per batch grandi (bulk write)
 SLEEP_BETWEEN_CALLS_SEC = 0.1  # Google Places limit: 10 QPS — siamo sotto
-BATCH_SIZE_POST = 100          # invio max 100 record per POST ad Apps Script
+BATCH_SIZE_POST = 50           # ridotto da 100 → 50 per stare ben sotto al timeout Apps Script
+RETRY_POST_MAX = 3             # 3 tentativi per POST in caso di timeout
 
 # Endpoints Google Places (API classica)
 PLACES_FIND_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
@@ -273,16 +275,32 @@ def enrich_candidate(api_key: str, c: Candidate) -> EnrichmentResult:
 # ============================================================
 
 def post_to_apps_script(url: str, secret: str, records: list[dict]) -> dict:
+    """POST con retry su timeout (Apps Script può rallentare con Sheet grandi).
+    Backoff: 10s, 30s, 60s.
+    """
     payload = json.dumps({"secret": secret, "action": "update_enrichment", "records": records}).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-        method="POST",
-    )
-    opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
-    with opener.open(req, timeout=HTTP_TIMEOUT_SEC) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    backoffs = [10, 30, 60]
+    last_err = None
+    for attempt in range(RETRY_POST_MAX + 1):
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
+            method="POST",
+        )
+        opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler())
+        try:
+            with opener.open(req, timeout=APPS_SCRIPT_TIMEOUT_SEC) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = e
+            if attempt < RETRY_POST_MAX:
+                wait_s = backoffs[attempt]
+                print(f"  POST timeout (tentativo {attempt+1}/{RETRY_POST_MAX+1}), retry in {wait_s}s...", file=sys.stderr)
+                time.sleep(wait_s)
+                continue
+            raise
+    raise last_err if last_err else RuntimeError("Unknown post error")
 
 
 def batched(items: list, n: int) -> Iterable[list]:
