@@ -1,0 +1,63 @@
+name: Enrich Hotels with Google Places API
+
+# Cron MENSILE per non sforare il free tier Google ($200/mese).
+# Lunedì del 1° giorno di ogni mese alle 04:00 UTC (~06:00 ora italiana estiva).
+# Workflow Overpass gira ogni domenica → questo gira il lunedì successivo
+# all'inizio del mese, su dati appena aggiornati.
+on:
+  schedule:
+    - cron: "0 4 1 * *"
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo simulazione (non scrive nel Sheet)"
+        required: false
+        default: "false"
+      max_calls:
+        description: "Max chiamate Google Places in questo run (default 5000 ≈ $185)"
+        required: false
+        default: "5000"
+      min_stars:
+        description: "Solo hotel con almeno N stelle (0=tutti, 3=premium, 4=lusso, 5=top)"
+        required: false
+        default: "0"
+      city:
+        description: "Limita a una sola città (opzionale, es: Firenze)"
+        required: false
+        default: ""
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run enrich_google_places
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.max_calls }}" ]; then
+            ARGS="$ARGS --max-calls ${{ github.event.inputs.max_calls }}"
+          fi
+          if [ -n "${{ github.event.inputs.min_stars }}" ]; then
+            ARGS="$ARGS --min-stars ${{ github.event.inputs.min_stars }}"
+          fi
+          if [ -n "${{ github.event.inputs.city }}" ]; then
+            ARGS="$ARGS --city ${{ github.event.inputs.city }}"
+          fi
+          python execution/scripts/enrich_google_places.py $ARGS
