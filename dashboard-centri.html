@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dream Team Clown · Lead Centri Commerciali — Teniamoci per Mano APS</title>
+<!-- Favicon inline SVG (carrello) — evita 404 favicon.ico -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛒%3C/text%3E%3C/svg%3E">
+<!-- Aggiorna anche BUILD_VERSION del giorno (in script) se modifichi sostanzialmente la dashboard -->
+
+<style>
+/* =========================================================================
+   DREAM TEAM CLOWN — Dashboard Lead Hotel
+   Single-file, offline, zero-dependency.
+   Modifica solo le costanti in fondo allo <script> per cambiare:
+   - EMAIL_TEMPLATE  → testo della bozza email
+   - APS             → IBAN, sito, nome legale
+   - CITIES          → elenco città / province
+   ========================================================================= */
+:root {
+  --c-primary: #2563a8;
+  --c-primary-dark: #1b4a80;
+  --c-secondary: #1e3a4c;
+  --c-accent: #f4a261;
+  --c-bg: #f4f7fa;
+  --c-surface: #ffffff;
+  --c-surface-alt: #e8eef4;
+  --c-text: #1a1a1a;
+  --c-text-muted: #6b6b6b;
+  --c-border: #d5dee5;
+  --c-success: #2a9d8f;
+  --c-danger: #e63946;
+  --c-warning: #f4a261;
+  --c-info: #457b9d;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 2px 8px rgba(40,61,59,0.08);
+  --shadow-lg: 0 8px 24px rgba(40,61,59,0.18);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.5;
+  font-size: 15px;
+}
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.95rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+}
+button:hover { background: var(--c-surface-alt); }
+button.primary { background: var(--c-primary); color: white; border-color: var(--c-primary); }
+button.primary:hover { background: var(--c-primary-dark); border-color: var(--c-primary-dark); }
+button.secondary { background: var(--c-secondary); color: white; border-color: var(--c-secondary); }
+button.secondary:hover { opacity: 0.9; }
+button.success { background: var(--c-success); color: white; border-color: var(--c-success); }
+button.danger { background: var(--c-danger); color: white; border-color: var(--c-danger); }
+button.ghost { background: transparent; border: 1px solid var(--c-border); }
+button.small { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+button.icon-only { padding: 0.4rem 0.55rem; }
+input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -1px;
+}
+
+/* HEADER ============================================================= */
+header.app-header {
+  background: linear-gradient(135deg, var(--c-secondary), #1a2a28);
+  color: white;
+  padding: 1rem 1.5rem;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.brand .clown-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(196,69,54,0.25);
+}
+.brand p {
+  margin: 0.15rem 0 0 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-weight: 300;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+.filters input, .filters select {
+  background: rgba(255,255,255,0.95);
+  border: none;
+}
+.filters input[type="search"] { min-width: 200px; flex: 1; max-width: 280px; }
+
+/* STATS ============================================================== */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  max-width: 1400px;
+  margin: 1rem auto;
+  padding: 0 1.5rem;
+}
+.stat {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.stat .num {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--c-secondary);
+  line-height: 1;
+}
+.stat .label { font-size: 0.8rem; color: var(--c-text-muted); }
+
+/* TOOLBAR ============================================================ */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 1400px;
+  margin: 0 auto 1rem auto;
+  padding: 0 1.5rem;
+  align-items: center;
+}
+.toolbar .spacer { flex: 1; }
+.btn-file {
+  display: inline-flex;
+  align-items: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.95rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.btn-file:hover { background: var(--c-surface-alt); }
+
+/* MAIN ============================================================== */
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem 4rem 1.5rem;
+}
+.city-block {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.city-block[hidden] { display: none; }
+.city-block summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--c-surface-alt);
+  border-bottom: 1px solid var(--c-border);
+  transition: background 0.15s;
+  user-select: none;
+}
+.city-block summary::-webkit-details-marker { display: none; }
+.city-block summary::before {
+  content: "▸";
+  font-size: 0.75rem;
+  transition: transform 0.15s;
+  color: var(--c-text-muted);
+}
+.city-block[open] summary::before { transform: rotate(90deg); }
+.city-block summary:hover { background: #ece6d8; }
+.city-block .city-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--c-secondary);
+}
+.city-block .city-prov {
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
+  font-weight: 400;
+}
+.city-block .counter {
+  background: var(--c-secondary);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.city-block .counter.zero {
+  background: var(--c-border);
+  color: var(--c-text-muted);
+}
+.city-block .event-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.event-badge.ok { background: rgba(42,157,143,0.15); color: var(--c-success); }
+.event-badge.missing { background: rgba(244,162,97,0.18); color: #b06030; }
+.city-block .spacer { flex: 1; }
+
+/* TABLE ============================================================== */
+.tbl-wrap { overflow-x: auto; }
+table.hotels {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+table.hotels th, table.hotels td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--c-border);
+}
+table.hotels thead th {
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-muted);
+  border-bottom: 2px solid var(--c-border);
+  position: sticky;
+  top: 0;
+}
+table.hotels tr:hover { background: rgba(196,69,54,0.03); }
+table.hotels td.warn-cell { color: var(--c-danger); }
+table.hotels a {
+  color: var(--c-info);
+  text-decoration: none;
+  word-break: break-all;
+}
+table.hotels a:hover { text-decoration: underline; }
+.stars { letter-spacing: -1px; color: var(--c-accent); }
+.row-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.empty-row td {
+  text-align: center;
+  color: var(--c-text-muted);
+  padding: 1.5rem;
+  font-style: italic;
+}
+.stato-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.stato-da_contattare { background: rgba(107,107,107,0.15); color: #5a5a5a; }
+.stato-contattato { background: rgba(69,123,157,0.15); color: var(--c-info); }
+.stato-positivo { background: rgba(42,157,143,0.18); color: var(--c-success); }
+.stato-negativo { background: rgba(230,57,70,0.15); color: var(--c-danger); }
+.stato-no_risposta { background: rgba(244,162,97,0.2); color: #b06030; }
+
+.no-results {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--c-text-muted);
+  background: var(--c-surface);
+  border: 1px dashed var(--c-border);
+  border-radius: var(--radius);
+}
+
+/* MOBILE — table → cards */
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+  header.app-header { padding: 0.75rem 1rem; }
+  .filters { width: 100%; justify-content: stretch; }
+  .filters > * { flex: 1; min-width: 0; }
+  .stats { padding: 0 1rem; }
+  .toolbar { padding: 0 1rem; }
+  main { padding: 0 1rem 4rem 1rem; }
+
+  table.hotels thead { display: none; }
+  table.hotels, table.hotels tbody, table.hotels tr, table.hotels td {
+    display: block;
+    width: 100%;
+  }
+  table.hotels tr {
+    border-bottom: 1px solid var(--c-border);
+    padding: 0.65rem 0.85rem;
+  }
+  table.hotels tr:last-child { border-bottom: none; }
+  table.hotels td {
+    border-bottom: none;
+    padding: 0.2rem 0;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  table.hotels td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--c-text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    min-width: 75px;
+  }
+  table.hotels td.row-actions-cell { padding-top: 0.5rem; }
+  table.hotels td.row-actions-cell::before { display: none; }
+  table.hotels td.empty { display: none; }
+}
+
+/* MODAL ============================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(40,61,59,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fadeIn 0.15s;
+}
+.modal-backdrop[hidden] { display: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  max-width: 760px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+.modal.wide { max-width: 1000px; }
+.modal-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  background: var(--c-surface);
+  z-index: 1;
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  flex: 1;
+  color: var(--c-secondary);
+}
+.modal-body { padding: 1.25rem; }
+.modal-footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  background: var(--c-surface-alt);
+  position: sticky;
+  bottom: 0;
+}
+.close-x {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--c-text-muted);
+  padding: 0 0.25rem;
+}
+.close-x:hover { color: var(--c-text); }
+
+/* FORM ============================================================== */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--c-text-muted);
+}
+.form-grid label input,
+.form-grid label select,
+.form-grid label textarea {
+  width: 100%;
+  font-weight: 400;
+  color: var(--c-text);
+}
+.form-grid textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* EMAIL MODAL ======================================================== */
+.email-meta {
+  background: var(--c-surface-alt);
+  border-left: 3px solid var(--c-accent);
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+.email-meta strong { color: var(--c-secondary); }
+.email-field {
+  margin-bottom: 1rem;
+}
+.email-field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+  margin-bottom: 0.3rem;
+}
+.email-field textarea, .email-field input {
+  width: 100%;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.email-field textarea#emailBody {
+  min-height: 360px;
+  resize: vertical;
+}
+.warning-box {
+  background: rgba(244,162,97,0.15);
+  border: 1px solid var(--c-warning);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  color: #5a3a1e;
+  margin-bottom: 1rem;
+}
+.warning-box h3 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.95rem;
+  color: #7a2f0e;
+}
+.warning-box p { margin: 0 0 0.5rem 0; font-size: 0.9rem; }
+
+/* EVENTI MODAL ======================================================= */
+.event-card {
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+  background: var(--c-surface-alt);
+}
+.event-card h3 {
+  margin: 0 0 0.6rem 0;
+  font-size: 0.95rem;
+  color: var(--c-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.event-card h3 .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--c-border);
+}
+.event-card.configured h3 .dot { background: var(--c-success); }
+.event-card .form-grid { gap: 0.5rem 0.85rem; }
+.event-card label { font-size: 0.78rem; }
+
+/* TOAST ============================================================== */
+.sync-badge {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.sync-badge.ok { background: rgba(42,157,143,0.15); color: var(--c-success); }
+.sync-badge.warn { background: rgba(244,162,97,0.2); color: #b06030; }
+.sync-badge.muted { background: var(--c-surface-alt); color: var(--c-text-muted); }
+
+#toastContainer {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.toast {
+  background: var(--c-secondary);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.88rem;
+  max-width: 320px;
+  animation: slideIn 0.2s;
+}
+.toast.success { background: var(--c-success); }
+.toast.error { background: var(--c-danger); }
+.toast.info { background: var(--c-info); }
+@keyframes slideIn {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* MISC =============================================================== */
+.muted { color: var(--c-text-muted); }
+.kbd {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.8em;
+  background: var(--c-surface-alt);
+  border: 1px solid var(--c-border);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+details.import-help summary {
+  cursor: pointer;
+  color: var(--c-info);
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+}
+details.import-help[open] summary { margin-bottom: 0.5rem; }
+.import-help-content {
+  background: var(--c-surface-alt);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.import-help-content code {
+  display: block;
+  background: white;
+  border: 1px solid var(--c-border);
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  margin-top: 0.4rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+@media print {
+  header.app-header, .toolbar, .row-actions-cell, .filters { display: none; }
+  .city-block { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<header class="app-header">
+  <div class="header-row">
+    <div class="brand">
+      <h1><span class="clown-dot"></span> Dream Team Clown · Lead Centri Commerciali</h1>
+      <p>Teniamoci per Mano APS — banchetti raccolta fondi nei centri commerciali</p>
+    </div>
+    <div class="filters">
+      <input type="search" id="searchBox" placeholder="🔎 Cerca hotel, indirizzo, email...">
+      <select id="cityFilter" aria-label="Filtra per città"></select>
+      <select id="statusFilter" aria-label="Filtra per stato">
+        <option value="">Tutti gli stati</option>
+        <option value="da_contattare">Da contattare</option>
+        <option value="contattato">Contattato</option>
+        <option value="positivo">Risposto: sì</option>
+        <option value="negativo">Risposto: no</option>
+        <option value="no_risposta">Nessuna risposta</option>
+      </select>
+      <!-- Filtro stelle nascosto: i centri commerciali non hanno stelle. Default 0 = mostra tutti. -->
+      <select id="starsFilter" aria-label="Filtra per stelle" hidden>
+        <option value="0" selected>Tutti</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== STATS ===================== -->
+<section class="stats" id="statsBar">
+  <div class="stat"><span class="num" id="statTotHotels">0</span><span class="label">Hotel totali</span></div>
+  <div class="stat"><span class="num" id="statTotCities">0</span><span class="label">Città con lead</span></div>
+  <div class="stat"><span class="num" id="statContacted">0</span><span class="label">Contattati</span></div>
+  <div class="stat"><span class="num" id="statPositive">0</span><span class="label">Risposte positive</span></div>
+</section>
+
+<!-- ===================== TOOLBAR ===================== -->
+<section class="toolbar">
+  <button class="primary" id="btnSync" title="Aggiorna da Google Sheet">🔄 Sync ora</button>
+  <span class="sync-badge muted" id="syncStatusBadge">—</span>
+  <button class="secondary" id="btnConfig" title="Configura URL Google Sheet">⚙ Sorgente dati</button>
+  <button class="ghost" id="btnOpenSheet" title="Apri Google Sheet per modificare" hidden>📊 Apri Sheet</button>
+  <div class="spacer"></div>
+  <button class="ghost" id="btnAddHotel" title="Solo modalità locale">+ Aggiungi hotel</button>
+  <label class="btn-file">
+    📥 Importa CSV/JSON
+    <input type="file" id="csvImport" accept=".csv,.json" hidden>
+  </label>
+  <button class="ghost" id="btnExport">📤 Esporta CSV</button>
+  <button class="secondary" id="btnEventi">📅 Eventi per città</button>
+  <button class="ghost" id="btnDemo" title="Carica dati demo (Firenze) per testare la dashboard">▶ Demo</button>
+  <button class="ghost" id="btnDownloadTemplate" title="Scarica CSV vuoto con header corretto">📄 Template CSV</button>
+  <button class="danger small" id="btnReset">🗑 Svuota dati</button>
+</section>
+
+<!-- ===================== MAIN ===================== -->
+<main id="cityList"></main>
+<div id="noResults" class="no-results" hidden>
+  Nessun hotel corrisponde ai filtri correnti.
+</div>
+
+<!-- ===================== MODAL: HOTEL ===================== -->
+<div class="modal-backdrop" id="hotelModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="hotelModalTitle">Aggiungi hotel</h2>
+      <button class="close-x" data-close="hotelModal" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="hotelForm" class="form-grid" onsubmit="return false;">
+        <label class="full">Nome hotel * <input type="text" name="nome_hotel" required></label>
+        <label>Città *
+          <select name="citta" required id="hotelFormCity"></select>
+        </label>
+        <label>Stelle
+          <select name="stelle">
+            <option value="1">1 ⭐</option>
+            <option value="2" selected>2 ⭐⭐</option>
+            <option value="3">3 ⭐⭐⭐</option>
+            <option value="4">4 ⭐⭐⭐⭐</option>
+            <option value="5">5 ⭐⭐⭐⭐⭐</option>
+          </select>
+        </label>
+        <label class="full">Indirizzo <input type="text" name="indirizzo" placeholder="Via, n°, CAP, città"></label>
+        <label>Telefono <input type="tel" name="telefono" placeholder="+39 ..."></label>
+        <label>Email <input type="email" name="email" placeholder="info@hotel.it"></label>
+        <label class="full">Sito web <input type="url" name="sito_web" placeholder="https://"></label>
+        <label>Instagram <input type="text" name="instagram" placeholder="@handle o URL"></label>
+        <label>Facebook <input type="text" name="facebook" placeholder="@handle o URL"></label>
+        <label>LinkedIn <input type="text" name="linkedin" placeholder="URL"></label>
+        <label>Altro social <input type="text" name="altro_social" placeholder="TikTok / X / ..."></label>
+        <label class="full">Note <textarea name="note" rows="2"></textarea></label>
+        <label>Stato lead
+          <select name="stato">
+            <option value="da_contattare" selected>Da contattare</option>
+            <option value="contattato">Contattato</option>
+            <option value="positivo">Risposto: sì</option>
+            <option value="negativo">Risposto: no</option>
+            <option value="no_risposta">Nessuna risposta</option>
+          </select>
+        </label>
+        <input type="hidden" name="id">
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" data-close="hotelModal">Annulla</button>
+      <button class="danger" id="btnDeleteHotel" hidden>Elimina</button>
+      <button class="primary" id="btnSaveHotel">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: EMAIL ===================== -->
+<div class="modal-backdrop" id="emailModal" hidden>
+  <div class="modal wide">
+    <div class="modal-header">
+      <h2>✉️ Bozza email sponsorship</h2>
+      <button class="close-x" data-close="emailModal" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body" id="emailBodyContainer">
+      <!-- popolato dinamicamente -->
+    </div>
+    <div class="modal-footer" id="emailFooter">
+      <button class="ghost" data-close="emailModal">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: EVENTI ===================== -->
+<div class="modal-backdrop" id="eventiModal" hidden>
+  <div class="modal wide">
+    <div class="modal-header">
+      <h2>📅 Dati evento per città</h2>
+      <button class="close-x" data-close="eventiModal" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted" style="margin-top:0;font-size:0.88rem;">
+        Configura date, strutture (RSA / ospedali / case famiglia) e referente per ogni città in cui sarà presente il Dream Team Clown.
+        Solo le città configurate qui sotto possono generare email complete.
+      </p>
+      <input type="search" id="eventiSearch" placeholder="🔎 Filtra città..." style="width:100%;margin-bottom:1rem;">
+      <div id="eventiList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" data-close="eventiModal">Chiudi</button>
+      <button class="primary" id="btnSaveEventi">Salva tutti</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: CONFIG SORGENTE ===================== -->
+<div class="modal-backdrop" id="configModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙ Configura sorgente Google Sheet</h2>
+      <button class="close-x" data-close="configModal" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted" style="margin-top:0;font-size:0.88rem;">
+        Incolla gli URL CSV pubblicati delle due tab del tuo Google Sheet "Lead Hotel APS".
+        Lasciali vuoti per modalità locale (dati solo nel tuo browser).
+        <strong>Vedi <a href="https://github.com/" target="_blank">SETUP.md</a> per istruzioni.</strong>
+      </p>
+      <form id="configForm" class="form-grid" onsubmit="return false;">
+        <label class="full">URL CSV tab "Hotel" (pubblicato)
+          <input type="url" name="hotel_csv_url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?gid=...&single=true&output=csv">
+        </label>
+        <label class="full">URL CSV tab "Eventi" (pubblicato)
+          <input type="url" name="eventi_csv_url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?gid=...&single=true&output=csv">
+        </label>
+        <label class="full">URL Sheet (per "Apri nel Sheet" e bottone modifica)
+          <input type="url" name="sheet_edit_url" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+        </label>
+      </form>
+      <details class="import-help" style="margin-top:1rem;">
+        <summary>Come ottengo gli URL pubblicati?</summary>
+        <div class="import-help-content">
+          <ol style="margin:0.2rem 0 0 1.1rem;padding:0;font-size:0.85rem;">
+            <li>Apri il Google Sheet.</li>
+            <li>File → <strong>Condividi → Pubblica sul web</strong>.</li>
+            <li>Nel selettore di sinistra: scegli la tab (es. "Hotel"); a destra: <strong>Valori separati da virgole (.csv)</strong>.</li>
+            <li>Clicca <strong>Pubblica</strong> → copia l'URL → incollalo sopra.</li>
+            <li>Ripeti per la tab "Eventi".</li>
+          </ol>
+        </div>
+      </details>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" data-close="configModal">Annulla</button>
+      <button class="danger" id="btnConfigClear">Svuota config (modalità locale)</button>
+      <button class="primary" id="btnConfigSave">Salva e Sync</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: IMPORT ===================== -->
+<div class="modal-backdrop" id="importModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📥 Modalità di import</h2>
+      <button class="close-x" data-close="importModal" aria-label="Chiudi">×</button>
+    </div>
+    <div class="modal-body">
+      <p>File rilevato: <strong id="importFileName">—</strong><br>
+         Righe valide trovate: <strong id="importRowCount">0</strong></p>
+      <p>Scegli come integrare i nuovi dati:</p>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:1rem;">
+        <button class="primary" data-import-mode="append">➕ Append — aggiungi alle righe esistenti</button>
+        <button class="secondary" data-import-mode="merge">🔄 Merge — aggiorna duplicati per (nome+città), aggiungi nuovi</button>
+        <button class="danger" data-import-mode="replace">⚠ Replace — cancella tutto e sostituisci</button>
+      </div>
+      <details class="import-help" style="margin-top:1rem;">
+        <summary>Vedi formato CSV atteso</summary>
+        <div class="import-help-content">
+          <p style="margin:0;">Header riga 1 (esatto, separatore virgola, UTF-8):</p>
+          <code>citta,provincia,nome_hotel,indirizzo,stelle,telefono,email,sito_web,instagram,facebook,linkedin,altro_social,note,stato</code>
+          <p style="margin:0.5rem 0 0;font-size:0.78rem;" class="muted">
+            In Excel italiano: File → Salva con nome → "CSV UTF-8 (delimitato da virgole)".<br>
+            Se i caratteri accentati appaiono corrotti, ricontrolla l'encoding.
+          </p>
+        </div>
+      </details>
+    </div>
+    <div class="modal-footer">
+      <button class="ghost" data-close="importModal">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TOAST CONTAINER ===================== -->
+<div id="toastContainer" aria-live="polite"></div>
+
+<!-- ===================== SCRIPT ===================== -->
+<script>
+'use strict';
+
+/** Identificativo build per verificare quale versione è attiva.
+    Aggiornare manualmente a ogni modifica significativa.
+    Visibile in basso a destra della dashboard + console al boot. */
+const BUILD_VERSION = "2026-06-05-centri-commerciali-v1";
+
+/* ============================================================
+   CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
+   senza dover configurare URL nel loro browser.
+   Sono URL pubblici CSV/Sheet di Google → nessun rischio di sicurezza.
+   Per disattivare la default + tornare modalità locale: clic su "⚙ Sorgente
+   dati" → svuota i campi → Salva.
+   ============================================================ */
+const DEFAULT_HOTEL_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIurc1W0f_TJaOJsyyEogUEU9x9wiumg38MVHoFzmGMJQP6bOVjxbkQR3iL32xBjgC7ZJ0-1goGsYj/pub?gid=0&single=true&output=csv";
+const DEFAULT_EVENTI_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIurc1W0f_TJaOJsyyEogUEU9x9wiumg38MVHoFzmGMJQP6bOVjxbkQR3iL32xBjgC7ZJ0-1goGsYj/pub?gid=1437400262&single=true&output=csv";
+const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1ECqIM8L_Bw_A3xqmlvFoSPh3FlUzr92f-CbE1gryAjo/edit?usp=drive_link";
+
+/* ============================================================
+   COSTANTI CONFIGURABILI
+   Modifica qui per cambiare: città, template email, dati APS.
+   ============================================================ */
+
+/** Lista città del progetto (Comune → Provincia ISO 3166-2:IT).
+    50 città principali + ~93 comuni locali estesi. Vedi fetch_overpass.py per la
+    distinzione CITIES_MAIN / CITIES_EXTENDED utilizzata dai 2 workflow paralleli. */
+const CITIES = [
+  // 107 capoluoghi di provincia italiani (vedi fetch_overpass_centri.py CITIES)
+  ["Torino","TO"],["Asti","AT"],["Alessandria","AL"],["Biella","BI"],
+  ["Cuneo","CN"],["Novara","NO"],["Vercelli","VC"],["Verbania","VB"],
+  ["Aosta","AO"],
+  ["Genova","GE"],["Imperia","IM"],["La Spezia","SP"],["Savona","SV"],
+  ["Milano","MI"],["Bergamo","BG"],["Brescia","BS"],["Como","CO"],
+  ["Cremona","CR"],["Lecco","LC"],["Lodi","LO"],["Mantova","MN"],
+  ["Monza","MB"],["Pavia","PV"],["Sondrio","SO"],["Varese","VA"],
+  ["Trento","TN"],["Bolzano","BZ"],
+  ["Venezia","VE"],["Belluno","BL"],["Padova","PD"],["Rovigo","RO"],
+  ["Treviso","TV"],["Verona","VR"],["Vicenza","VI"],
+  ["Trieste","TS"],["Gorizia","GO"],["Pordenone","PN"],["Udine","UD"],
+  ["Bologna","BO"],["Ferrara","FE"],["Forlì","FC"],["Cesena","FC"],
+  ["Modena","MO"],["Parma","PR"],["Piacenza","PC"],["Ravenna","RA"],
+  ["Reggio Emilia","RE"],["Rimini","RN"],
+  ["Firenze","FI"],["Arezzo","AR"],["Grosseto","GR"],["Livorno","LI"],
+  ["Lucca","LU"],["Massa","MS"],["Pisa","PI"],["Pistoia","PT"],
+  ["Prato","PO"],["Siena","SI"],
+  ["Perugia","PG"],["Terni","TR"],
+  ["Ancona","AN"],["Ascoli Piceno","AP"],["Fermo","FM"],
+  ["Macerata","MC"],["Pesaro","PU"],
+  ["Roma","RM"],["Frosinone","FR"],["Latina","LT"],["Rieti","RI"],["Viterbo","VT"],
+  ["L'Aquila","AQ"],["Chieti","CH"],["Pescara","PE"],["Teramo","TE"],
+  ["Campobasso","CB"],["Isernia","IS"],
+  ["Napoli","NA"],["Avellino","AV"],["Benevento","BN"],
+  ["Caserta","CE"],["Salerno","SA"],
+  ["Bari","BA"],["Andria","BT"],["Brindisi","BR"],
+  ["Foggia","FG"],["Lecce","LE"],["Taranto","TA"],
+  ["Potenza","PZ"],["Matera","MT"],
+  ["Catanzaro","CZ"],["Cosenza","CS"],["Crotone","KR"],
+  ["Reggio Calabria","RC"],["Vibo Valentia","VV"],
+  ["Palermo","PA"],["Agrigento","AG"],["Caltanissetta","CL"],
+  ["Catania","CT"],["Enna","EN"],["Messina","ME"],["Ragusa","RG"],
+  ["Siracusa","SR"],["Trapani","TP"],
+  ["Cagliari","CA"],["Nuoro","NU"],["Oristano","OR"],["Sassari","SS"],
+  ["Carbonia","SU"]
+];
+
+/** Coordinate APS — usate nel template email. */
+const APS = {
+  nome: "Teniamoci per Mano APS",
+  nome_iban: "Teniamoci per Mano Onlus",
+  sito: "https://www.teniamocipermanoonlus.net",
+  iban: "IT57H0760103400000006953031",
+  causale: 'Donazione a sostegno di "Dream Team Clown"'
+};
+
+/** Default referente (precompila il modal eventi). Modificabile da UI. */
+const REFERENTE_DEFAULT = {
+  referente_nome: "Francesca Selcia",
+  referente_ruolo: "Referente Corporate Fundraising - Event Manager",
+  referente_contatto: ""
+};
+
+/** Oggetto email — usa {{CITTA_UPPER}}. */
+const EMAIL_SUBJECT = 'RICHIESTA OSPITALITÀ SPAZIO - TENIAMOCI PER MANO APS "DREAM TEAM CLOWN" {{CITTA_UPPER}}';
+
+/** Tipi di evento supportati per i centri. Default "raccolta_fondi". */
+const TIPI_EVENTO = ["raccolta_fondi"];
+
+/** Corpo email centri commerciali — merge fields: {{HOTEL_NOME}} (= nome centro)
+    {{CITTA}} {{DATA_EVENTO}} {{STRUTTURE_LISTA}} (= location evento)
+    {{REFERENTE_NOME}} {{REFERENTE_RUOLO}} {{REFERENTE_CONTATTO}}
+    {{APS_NOME}} {{APS_SITO}} {{IBAN}} {{CAUSALE}}
+    Template "raccolta_fondi" — chiede spazio espositivo / banchetto nel weekend. */
+const EMAIL_TEMPLATE =
+`Spett.le {{HOTEL_NOME}},
+
+mi chiamo {{REFERENTE_NOME}} e sono {{REFERENTE_RUOLO}} in {{APS_NOME}}.
+
+Vi scrivo perché sarei felicissima di coinvolgere la Vostra struttura in un progetto di grande valore sociale che la nostra associazione porta avanti su tutto il territorio nazionale.
+
+{{APS_NOME}} ({{APS_SITO}}) è un'associazione nazionale di clownterapia: i nostri clown volontari, attraverso la formazione e le tecniche di clownerie applicate al contesto socio-sanitario, portano qualche ora di "luce" nella vita di quei bambini che lottano ogni giorno per vincere la loro battaglia. Siamo impegnati da diversi anni nei reparti di oncologia pediatrica, nelle case famiglia e negli istituti di lunga degenza, e oggi operiamo in oltre 180 strutture socio-sanitarie in tutta Italia.
+
+Il nostro progetto di punta, il Dream Team Clown, è una squadra di volontari formati in 200 ore da Ginevra Sanguigno — Presidente di Clown One Italia e collaboratrice del Gesundheit! Institute del dott. Patch Adams.
+
+Per sostenere e far conoscere questo progetto, organizziamo iniziative di sensibilizzazione e raccolta fondi sul territorio. Vi scriviamo per chiedere la Vostra ospitalità:
+
+ci piacerebbe poter allestire un banchetto informativo dei nostri volontari presso il Vostro centro commerciale, in occasione dell'iniziativa prevista a {{CITTA}}:
+{{STRUTTURE_LISTA}}
+nelle date: {{DATA_EVENTO}}
+
+Sarebbe un'occasione per noi di incontrare i Vostri visitatori, raccontare le nostre attività e raccogliere fondi a sostegno della clownterapia — e per il Vostro centro un gesto concreto di responsabilità sociale, valorizzato nella nostra comunicazione (sito web, social, materiali dell'evento).
+
+In alternativa o in aggiunta, sarà possibile sostenerci con una donazione libera sul conto corrente dell'associazione:
+
+{{APS_IBAN_NOME}}
+IBAN: {{IBAN}}
+Causale: {{CAUSALE}}
+
+Ogni forma di sostegno, anche simbolica, può fare davvero la differenza.
+
+Vi ringrazio in anticipo per l'attenzione e resto a Vostra completa disposizione per concordare modalità, spazi e tempistiche.
+
+Cordialmente,
+{{REFERENTE_NOME}}
+{{REFERENTE_RUOLO}}
+{{APS_NOME}}
+{{REFERENTE_CONTATTO}}`;
+
+/** Per i centri esiste un solo template: alias per compatibilità col codice condiviso. */
+const EMAIL_TEMPLATE_FESTIVAL = EMAIL_TEMPLATE;
+
+const CSV_HEADERS = [
+  "citta","provincia","nome_hotel","indirizzo","telefono","email",
+  "sito_web","instagram","facebook","linkedin","altro_social","note","stato"
+];
+
+/** Header v2 esteso (Sheet Centri). Nota: il CSV reale usa "nome_centro",
+    il parser lo mappa al campo interno "nome_hotel". */
+const CSV_HEADERS_V2 = [
+  "id","citta","provincia","nome_hotel","indirizzo","telefono","email",
+  "sito_web","instagram","facebook","linkedin","altro_social","note","stato",
+  "fonte","osm_id","updated_at"
+];
+
+const STORAGE_KEY_CONFIG = "tpm_centri_config_v2";
+const STORAGE_KEY_SYNC   = "tpm_centri_last_sync_v2";
+
+const STATI_LEAD = ["da_contattare","contattato","positivo","negativo","no_risposta"];
+const STATO_LABEL = {
+  da_contattare: "Da contattare",
+  contattato: "Contattato",
+  positivo: "Risposto: sì",
+  negativo: "Risposto: no",
+  no_risposta: "Nessuna risposta"
+};
+
+/* ============================================================
+   STATE — persistito in localStorage
+   ============================================================ */
+const STORAGE_KEY_HOTELS = "tpm_centri_v1";
+const STORAGE_KEY_EVENTI = "tpm_centri_eventi_v1";
+
+/** @type {Array<Hotel>} */
+let hotels = [];
+/** @type {Object<string, Evento>} */
+let eventi = {};
+/** @type {{hotel_csv_url?: string, eventi_csv_url?: string, sheet_edit_url?: string}} */
+let config = {};
+let lastSyncAt = null;
+
+let pendingImport = null; // { rows: [...], filename: "..." }
+
+function loadState() {
+  try {
+    const h = localStorage.getItem(STORAGE_KEY_HOTELS);
+    hotels = h ? JSON.parse(h) : [];
+  } catch (e) { hotels = []; }
+  try {
+    const ev = localStorage.getItem(STORAGE_KEY_EVENTI);
+    eventi = ev ? JSON.parse(ev) : {};
+  } catch (e) { eventi = {}; }
+  try {
+    const cfg = localStorage.getItem(STORAGE_KEY_CONFIG);
+    config = cfg ? JSON.parse(cfg) : {};
+  } catch (e) { config = {}; }
+  // Se l'utente non ha mai configurato URL custom, usa i default condivisi.
+  // Questo permette a TUTTE le colleghe di vedere i dati senza setup.
+  // L'utente può sempre fare override via modal "⚙ Sorgente dati".
+  if (!config.hotel_csv_url && DEFAULT_HOTEL_CSV_URL) config.hotel_csv_url = DEFAULT_HOTEL_CSV_URL;
+  if (!config.eventi_csv_url && DEFAULT_EVENTI_CSV_URL) config.eventi_csv_url = DEFAULT_EVENTI_CSV_URL;
+  if (!config.sheet_edit_url && DEFAULT_SHEET_EDIT_URL) config.sheet_edit_url = DEFAULT_SHEET_EDIT_URL;
+  try {
+    lastSyncAt = localStorage.getItem(STORAGE_KEY_SYNC) || null;
+  } catch (e) { lastSyncAt = null; }
+}
+
+/** Soglia oltre cui non salviamo hotels in localStorage (quota ~5MB → ~2-3k hotel max). */
+const HOTELS_CACHE_LIMIT = 2000;
+
+function saveState() {
+  // Hotels: cache offline solo se sotto soglia (oltre, localStorage va in QuotaExceededError)
+  try {
+    if (hotels.length <= HOTELS_CACHE_LIMIT) {
+      localStorage.setItem(STORAGE_KEY_HOTELS, JSON.stringify(hotels));
+    } else {
+      // dataset grande → no cache offline (Sheet è verità, sync ricarica all'apertura)
+      try { localStorage.removeItem(STORAGE_KEY_HOTELS); } catch(_) {}
+    }
+  } catch (e) {
+    console.warn("saveState hotels: cache offline disabilitata (" + e.message + ")");
+    try { localStorage.removeItem(STORAGE_KEY_HOTELS); } catch(_) {}
+  }
+  // Eventi: sempre salvati (piccoli, max ~50 città × ~500 byte = ~25KB)
+  try {
+    localStorage.setItem(STORAGE_KEY_EVENTI, JSON.stringify(eventi));
+  } catch (e) {
+    console.warn("saveState eventi:", e.message);
+  }
+}
+
+function saveConfig() {
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+}
+
+function isSyncMode() {
+  return !!(config.hotel_csv_url || config.eventi_csv_url);
+}
+
+function uid() {
+  return (crypto.randomUUID && crypto.randomUUID()) ||
+    "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,9);
+}
+
+/* ============================================================
+   CSV PARSER / SERIALIZER (RFC 4180 minimal)
+   ============================================================ */
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip BOM
+  const rows = [];
+  let row = [], field = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; }
+        else { inQ = false; }
+      } else { field += c; }
+    } else {
+      if (c === '"') { inQ = true; }
+      else if (c === ',') { row.push(field); field = ""; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i+1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = "";
+      } else { field += c; }
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length && !(r.length === 1 && r[0] === ""));
+}
+
+function csvEscape(v) {
+  v = (v == null) ? "" : String(v);
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function serializeCSV(list) {
+  const lines = [CSV_HEADERS.join(",")];
+  for (const h of list) {
+    lines.push(CSV_HEADERS.map(k => csvEscape(h[k])).join(","));
+  }
+  return lines.join("\n");
+}
+
+function csvToHotels(text) {
+  const rows = parseCSV(text);
+  if (!rows.length) return { rows: [], errors: ["File vuoto"] };
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const errors = [];
+  const idx = {};
+  CSV_HEADERS.forEach(k => { idx[k] = header.indexOf(k); });
+  // Centri: il CSV usa "nome_centro". Mappa al campo interno "nome_hotel".
+  const idxNomeCentro = header.indexOf("nome_centro");
+  if (idxNomeCentro >= 0) idx.nome_hotel = idxNomeCentro;
+  if (idx.nome_hotel < 0 || idx.citta < 0) {
+    errors.push("Header CSV non valido — manca colonna nome (nome_centro/nome_hotel) e/o 'citta'.");
+    return { rows: [], errors };
+  }
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const get = (k) => idx[k] >= 0 ? (row[idx[k]] || "").trim() : "";
+    const nome = get("nome_hotel");
+    if (!nome) { errors.push("Riga " + (r+1) + ": nome vuoto — scartata."); continue; }
+    const stelleRaw = parseInt(get("stelle"), 10);
+    const stato = STATI_LEAD.includes(get("stato")) ? get("stato") : "da_contattare";
+    const cittaRaw = get("citta");
+    const cittaCanon = normalizeCityName(cittaRaw);
+    if (cittaCanon !== cittaRaw && cittaCanon) {
+      errors.push("Riga " + (r+1) + ": città normalizzata da \"" + cittaRaw + "\" a \"" + cittaCanon + "\".");
+    }
+    let provincia = get("provincia");
+    if (!provincia && cittaCanon) {
+      const found = CITIES.find(c => c[0] === cittaCanon);
+      if (found) provincia = found[1];
+    }
+    // Campi v2 opzionali (presenti se CSV viene dal Google Sheet)
+    const idxId = header.indexOf("id");
+    const idxFonte = header.indexOf("fonte");
+    const idxOsmId = header.indexOf("osm_id");
+    const idxUpdatedAt = header.indexOf("updated_at");
+    const idFromCsv = idxId >= 0 ? (row[idxId] || "").trim() : "";
+    const fonteFromCsv = idxFonte >= 0 ? (row[idxFonte] || "").trim() : "";
+    const osmIdFromCsv = idxOsmId >= 0 ? (row[idxOsmId] || "").trim() : "";
+    const updatedFromCsv = idxUpdatedAt >= 0 ? (row[idxUpdatedAt] || "").trim() : "";
+    out.push({
+      id: idFromCsv || uid(),
+      citta: cittaCanon || cittaRaw,
+      provincia: provincia,
+      nome_hotel: nome,
+      indirizzo: get("indirizzo"),
+      stelle: isNaN(stelleRaw) ? 0 : Math.min(5, Math.max(0, stelleRaw)),
+      telefono: get("telefono"),
+      email: get("email"),
+      sito_web: get("sito_web"),
+      instagram: get("instagram"),
+      facebook: get("facebook"),
+      linkedin: get("linkedin"),
+      altro_social: get("altro_social"),
+      note: get("note"),
+      stato: stato,
+      fonte: fonteFromCsv || "manuale",
+      osm_id: osmIdFromCsv,
+      createdAt: new Date().toISOString(),
+      updatedAt: updatedFromCsv || new Date().toISOString()
+    });
+  }
+  // mojibake check
+  const sample = out.slice(0, 50).map(h => h.nome_hotel + h.indirizzo).join("");
+  if (/Ã[©¨§à¬òù]|â€/.test(sample)) {
+    errors.push("⚠ Caratteri accentati potrebbero essere corrotti (encoding non UTF-8). In Excel: salva come 'CSV UTF-8'.");
+  }
+  return { rows: out, errors };
+}
+
+/* ============================================================
+   SYNC DA GOOGLE SHEET (v2)
+   Legge i CSV pubblicati delle 2 tab → sostituisce hotels/eventi.
+   localStorage rimane come cache offline.
+   ============================================================ */
+
+function eventiFromCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) return {};
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = {};
+  // Centri: tab EventiCentri usa "location_evento" al posto di "strutture".
+  ["citta","data_evento","tipo_evento","location_evento","strutture","referente_nome","referente_ruolo","referente_contatto"].forEach(k => { idx[k] = header.indexOf(k); });
+  if (idx.citta < 0) return {};
+  // Schema: { "Roma": [evento1, evento2, ...], "Milano": [evento1] }
+  // Più righe con stessa città → lista cumulativa di eventi.
+  const out = {};
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const get = (k) => idx[k] >= 0 ? (row[idx[k]] || "").trim() : "";
+    const citta = normalizeCityName(get("citta"));
+    if (!citta) continue;
+    const dataEvento = get("data_evento");
+    if (!dataEvento) continue; // riga senza data evento = ignorata
+    // location_evento (centri) ha priorità; fallback su strutture per retrocompat
+    const struttureRaw = get("location_evento") || get("strutture");
+    const strutture = struttureRaw
+      ? struttureRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
+      : [];
+    const tipoRaw = get("tipo_evento").toLowerCase();
+    const tipo_evento = TIPI_EVENTO.includes(tipoRaw) ? tipoRaw : "raccolta_fondi";
+    const evento = {
+      data_evento: dataEvento,
+      tipo_evento: tipo_evento,
+      strutture: strutture,
+      referente_nome: get("referente_nome"),
+      referente_ruolo: get("referente_ruolo"),
+      referente_contatto: get("referente_contatto")
+    };
+    if (!out[citta]) out[citta] = [];
+    out[citta].push(evento);
+  }
+  return out;
+}
+
+/** Restituisce l'array eventi per una città. Sempre array (vuoto se nessuno).
+    Compatibile con il vecchio schema (singolo evento per città) — vedi migrazione automatica. */
+function getEventiPerCitta(citta) {
+  const v = eventi[citta];
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  // Legacy: vecchio schema con oggetto singolo → wrap in array
+  if (v.data_evento) return [v];
+  return [];
+}
+
+/** Etichetta human-readable per identificare un evento nel dropdown. */
+function labelEvento(ev) {
+  const tipoLabel = "🛒 raccolta fondi";
+  const data = ev.data_evento || "(senza data)";
+  const struttPreview = (ev.strutture && ev.strutture.length)
+    ? " · " + ev.strutture[0].slice(0, 40) + (ev.strutture[0].length > 40 ? "…" : "")
+    : "";
+  return `${data} ${tipoLabel}${struttPreview}`;
+}
+
+async function syncFromSheet() {
+  if (!config.hotel_csv_url && !config.eventi_csv_url) {
+    toast("Configura prima gli URL del Google Sheet", "error");
+    return;
+  }
+  $("#syncStatusBadge").textContent = "⏳ sync in corso...";
+  let okHot = false, okEv = false;
+  const errors = [];
+
+  if (config.hotel_csv_url) {
+    try {
+      const resp = await fetch(config.hotel_csv_url, { cache: "no-store" });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const text = await resp.text();
+      const parsed = csvToHotels(text);
+      if (parsed.rows.length === 0 && parsed.errors.length) {
+        throw new Error(parsed.errors.join("; "));
+      }
+      hotels = parsed.rows;
+      okHot = true;
+    } catch (err) {
+      errors.push("Hotel CSV: " + err.message);
+    }
+  }
+
+  if (config.eventi_csv_url) {
+    try {
+      const resp = await fetch(config.eventi_csv_url, { cache: "no-store" });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const text = await resp.text();
+      eventi = eventiFromCSV(text);
+      okEv = true;
+    } catch (err) {
+      errors.push("Eventi CSV: " + err.message);
+    }
+  }
+
+  if (okHot || okEv) {
+    lastSyncAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY_SYNC, lastSyncAt);
+    saveState();
+    renderAll();
+    toast(`Sync OK: ${hotels.length} hotel · ${Object.keys(eventi).length} eventi configurati`, "success");
+  }
+  if (errors.length) {
+    toast("Errori sync: " + errors.join(" | "), "error");
+  }
+  updateSyncBadge();
+}
+
+function updateSyncBadge() {
+  const el = $("#syncStatusBadge");
+  if (!el) return;
+  if (!isSyncMode()) {
+    el.textContent = "💾 modalità locale (nessun Sheet configurato)";
+    el.className = "sync-badge muted";
+    return;
+  }
+  if (!lastSyncAt) {
+    el.textContent = "⚠ mai sincronizzato — clicca Sync";
+    el.className = "sync-badge warn";
+    return;
+  }
+  const ago = Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 60000);
+  let txt;
+  if (ago < 1) txt = "✓ sincronizzato ora";
+  else if (ago < 60) txt = `✓ sincronizzato ${ago} min fa`;
+  else if (ago < 1440) txt = `✓ sincronizzato ${Math.round(ago/60)} ore fa`;
+  else txt = `✓ sincronizzato ${Math.round(ago/1440)} giorni fa`;
+  el.textContent = txt;
+  el.className = "sync-badge ok";
+}
+
+function normalizeCityName(s) {
+  if (!s) return "";
+  const trimmed = s.trim();
+  const found = CITIES.find(c => c[0].toLowerCase() === trimmed.toLowerCase());
+  return found ? found[0] : trimmed;
+}
+
+/* ============================================================
+   EMAIL GENERATION
+   ============================================================ */
+function generateEmail(hotel, eventoOverride) {
+  // Se ricevo un evento esplicito (override) lo uso; altrimenti pesco il primo evento della città.
+  let ev = eventoOverride;
+  if (!ev) {
+    const list = getEventiPerCitta(hotel.citta);
+    if (!list.length) {
+      return { ok: false, missing: hotel.citta };
+    }
+    ev = list[0];
+  }
+  if (!ev || !ev.data_evento) {
+    return { ok: false, missing: hotel.citta };
+  }
+  const struttureArr = (ev.strutture || []).filter(s => s && s.trim());
+  const struttureList = struttureArr.length
+    ? struttureArr.map(s => "  • " + s.trim()).join("\n")
+    : "  (le strutture socio-sanitarie convenzionate sul territorio)";
+  const contatto = (ev.referente_contatto || "").trim();
+
+  const tokens = {
+    HOTEL_NOME: hotel.nome_hotel || "",
+    CITTA: hotel.citta || "",
+    CITTA_UPPER: (hotel.citta || "").toUpperCase(),
+    DATA_EVENTO: ev.data_evento || "",
+    STRUTTURE_LISTA: struttureList,
+    REFERENTE_NOME: ev.referente_nome || REFERENTE_DEFAULT.referente_nome,
+    REFERENTE_RUOLO: ev.referente_ruolo || REFERENTE_DEFAULT.referente_ruolo,
+    REFERENTE_CONTATTO: contatto,
+    APS_NOME: APS.nome,
+    APS_IBAN_NOME: APS.nome_iban,
+    APS_SITO: APS.sito,
+    IBAN: APS.iban,
+    CAUSALE: APS.causale
+  };
+
+  const fill = (tpl) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => tokens[k] !== undefined ? tokens[k] : "{{" + k + "}}");
+
+  // Sceglie il template in base al tipo_evento.
+  // Default "clownterapia" (RSA/strutture sanitarie).
+  // "festival" → eventi pubblici (Smile Clown Festival, raccolte fondi pubbliche).
+  const template = (ev.tipo_evento === "festival") ? EMAIL_TEMPLATE_FESTIVAL : EMAIL_TEMPLATE;
+
+  return {
+    ok: true,
+    subject: fill(EMAIL_SUBJECT),
+    body: fill(template),
+    tipo_evento: ev.tipo_evento || "clownterapia"
+  };
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function escapeHtml(s) {
+  return (s == null ? "" : String(s))
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function applyFilters(list) {
+  const q = $("#searchBox").value.trim().toLowerCase();
+  const city = $("#cityFilter").value;
+  const status = $("#statusFilter").value;
+  const minStars = parseInt($("#starsFilter").value, 10) || 0;
+  return list.filter(h => {
+    if (city && h.citta !== city) return false;
+    if (status && h.stato !== status) return false;
+    if (minStars && (h.stelle || 0) < minStars) return false;
+    if (q) {
+      const hay = (h.nome_hotel + " " + h.indirizzo + " " + h.email + " " + h.telefono + " " + h.sito_web).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderStats() {
+  const tot = hotels.length;
+  const citySet = new Set(hotels.map(h => h.citta));
+  const contacted = hotels.filter(h => h.stato !== "da_contattare").length;
+  const positive = hotels.filter(h => h.stato === "positivo").length;
+  $("#statTotHotels").textContent = tot;
+  $("#statTotCities").textContent = citySet.size;
+  $("#statContacted").textContent = contacted;
+  $("#statPositive").textContent = positive;
+}
+
+/** Soglia oltre la quale la dashboard NON renderizza tutti gli hotel insieme
+    ma richiede selezione esplicita città / ricerca testo per evitare freeze browser su mobile. */
+const LAZY_RENDER_THRESHOLD = 2000;
+
+function renderCityList() {
+  const cityFilterValue = $("#cityFilter").value;
+  const searchValue = $("#searchBox").value.trim();
+  const statusValue = $("#statusFilter").value;
+  const container = $("#cityList");
+
+  // === LAZY RENDER: dataset grande senza filtri → mostra invece selettore città ===
+  if (hotels.length > LAZY_RENDER_THRESHOLD && !cityFilterValue && !searchValue && !statusValue) {
+    const byCityCount = {};
+    for (const h of hotels) byCityCount[h.citta] = (byCityCount[h.citta] || 0) + 1;
+    const citiesWithHotels = CITIES.filter(c => byCityCount[c[0]] > 0)
+      .map(c => ({ city: c[0], prov: c[1], count: byCityCount[c[0]] }));
+    container.innerHTML = `
+      <div class="no-results" style="padding:2rem 1.5rem;">
+        <p style="font-size:1.1rem;margin:0 0 0.5rem;">
+          <strong>🎈 Dashboard pronta</strong> · ${hotels.length.toLocaleString('it')} hotel caricati su ${citiesWithHotels.length} città
+        </p>
+        <p style="margin:0 0 1.5rem;color:var(--c-text-muted);font-size:0.92rem;">
+          Per velocità, gli hotel non vengono mostrati tutti insieme.
+          Seleziona una città dal filtro in alto, oppure scrivi nella ricerca, per vedere i risultati.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;justify-content:center;max-width:900px;margin:0 auto;">
+          ${citiesWithHotels.map(c => `
+            <button class="ghost small" data-quick-city="${escapeHtml(c.city)}"
+              style="background:var(--c-surface);border:1px solid var(--c-border);">
+              ${escapeHtml(c.city)} <span class="muted">(${c.prov}) · ${c.count}</span>
+            </button>`).join("")}
+        </div>
+      </div>`;
+    // Wire click sui bottoni quick-city → imposta filtro città
+    container.querySelectorAll("[data-quick-city]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        $("#cityFilter").value = btn.dataset.quickCity;
+        renderAll();
+        // Scroll al top per mostrare i risultati
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+    $("#noResults").hidden = true;
+    return;
+  }
+
+  // === Render normale (dataset piccolo o filtro città attivo) ===
+  const filtered = applyFilters(hotels);
+  const byCity = {};
+  for (const h of hotels) {
+    if (!byCity[h.citta]) byCity[h.citta] = { all: [], visible: [] };
+    byCity[h.citta].all.push(h);
+  }
+  for (const h of filtered) {
+    if (!byCity[h.citta]) byCity[h.citta] = { all: [], visible: [] };
+    byCity[h.citta].visible.push(h);
+  }
+
+  container.innerHTML = "";
+
+  // Mostra le città in ordine canonico (lista CITIES) — solo se hanno match coi filtri
+  // o se la città filtrata è esplicitamente selezionata (anche se vuota).
+  let anyVisible = false;
+  for (const [city, prov] of CITIES) {
+    if (cityFilterValue && city !== cityFilterValue) continue;
+    const bucket = byCity[city] || { all: [], visible: [] };
+    // Skip se non passa il filtro città AND non ha hotel visibili AND nessun filtro città attivo
+    if (!cityFilterValue && bucket.visible.length === 0) continue;
+    container.appendChild(renderCityBlock(city, prov, bucket.all, bucket.visible));
+    if (bucket.visible.length > 0) anyVisible = true;
+  }
+
+  // Eventuali città fuori-lista presenti nei dati
+  const knownCities = new Set(CITIES.map(c => c[0]));
+  const extraCities = Object.keys(byCity).filter(c => !knownCities.has(c)).sort();
+  for (const city of extraCities) {
+    if (cityFilterValue && city !== cityFilterValue) continue;
+    const bucket = byCity[city];
+    if (!cityFilterValue && bucket.visible.length === 0) continue;
+    container.appendChild(renderCityBlock(city, "?", bucket.all, bucket.visible, true));
+    if (bucket.visible.length > 0) anyVisible = true;
+  }
+
+  $("#noResults").hidden = anyVisible || (!cityFilterValue && hotels.length === 0);
+  if (hotels.length === 0 && !cityFilterValue) {
+    container.innerHTML = `
+      <div class="no-results">
+        <p style="font-size:1.05rem;margin:0 0 0.5rem;"><strong>Benvenuto nella dashboard 🎈</strong></p>
+        <p style="margin:0 0 1rem;">Nessun hotel ancora caricato.</p>
+        <p style="font-size:0.9rem;">Inizia con <strong>+ Aggiungi hotel</strong>, <strong>📥 Importa CSV</strong>, oppure <strong>▶ Carica demo</strong> per vedere la dashboard in azione.</p>
+      </div>`;
+    $("#noResults").hidden = true;
+  }
+}
+
+function renderCityBlock(city, prov, allRows, visibleRows, extra=false) {
+  const eventiArr = getEventiPerCitta(city);
+  const eventOk = eventiArr.length > 0;
+  const details = document.createElement("details");
+  details.className = "city-block";
+  if (visibleRows.length > 0) details.open = true;
+
+  const eventBadgeHtml = eventOk
+    ? `<span class="event-badge ok">📅 ${eventiArr.length > 1 ? eventiArr.length + ' eventi configurati' : 'Evento configurato'}</span>`
+    : `<span class="event-badge missing">📅 Evento non configurato</span>`;
+
+  const counterClass = visibleRows.length > 0 ? "" : "zero";
+
+  let bodyHtml = "";
+  if (visibleRows.length === 0) {
+    bodyHtml = `<table class="hotels"><tbody><tr class="empty-row"><td colspan="9">Nessun hotel ${allRows.length > 0 ? "corrisponde ai filtri" : "in questa città"}.</td></tr></tbody></table>`;
+  } else {
+    bodyHtml = `
+      <div class="tbl-wrap">
+      <table class="hotels">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Indirizzo</th>
+            <th>⭐</th>
+            <th>Telefono</th>
+            <th>Email</th>
+            <th>Sito</th>
+            <th>Social</th>
+            <th>Stato</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${visibleRows.map(h => renderRow(h)).join("")}
+        </tbody>
+      </table>
+      </div>`;
+  }
+
+  details.innerHTML = `
+    <summary>
+      <span class="city-name">${escapeHtml(city)}</span>
+      <span class="city-prov">(${escapeHtml(prov)}${extra ? " · fuori lista" : ""})</span>
+      <span class="counter ${counterClass}">${visibleRows.length}${allRows.length !== visibleRows.length ? " / " + allRows.length : ""}</span>
+      ${eventBadgeHtml}
+      <span class="spacer"></span>
+      <button type="button" class="small ghost" data-action="add-here" data-city="${escapeHtml(city)}">+ qui</button>
+    </summary>
+    ${bodyHtml}
+  `;
+  return details;
+}
+
+function renderRow(h) {
+  const socialHtml = [
+    h.instagram && `<a href="${socialUrl('ig', h.instagram)}" target="_blank" rel="noopener" title="Instagram">📷</a>`,
+    h.facebook && `<a href="${socialUrl('fb', h.facebook)}" target="_blank" rel="noopener" title="Facebook">📘</a>`,
+    h.linkedin && `<a href="${socialUrl('li', h.linkedin)}" target="_blank" rel="noopener" title="LinkedIn">💼</a>`,
+    h.altro_social && `<span title="${escapeHtml(h.altro_social)}">🔗</span>`
+  ].filter(Boolean).join(" ");
+
+  const stars = "⭐".repeat(h.stelle || 0);
+  return `
+    <tr data-id="${h.id}">
+      <td data-label="Nome"><strong>${escapeHtml(h.nome_hotel)}</strong></td>
+      <td data-label="Indirizzo">${escapeHtml(h.indirizzo) || '<span class="muted">—</span>'}</td>
+      <td data-label="Stelle"><span class="stars">${stars}</span></td>
+      <td data-label="Telefono">${h.telefono ? `<a href="tel:${escapeHtml(h.telefono)}">${escapeHtml(h.telefono)}</a>` : '<span class="muted">—</span>'}</td>
+      <td data-label="Email">${h.email ? `<a href="mailto:${escapeHtml(h.email)}">${escapeHtml(h.email)}</a>` : '<span class="muted">—</span>'}</td>
+      <td data-label="Sito">${h.sito_web ? `<a href="${escapeHtml(ensureProtocol(h.sito_web))}" target="_blank" rel="noopener">${escapeHtml(shortUrl(h.sito_web))}</a>` : '<span class="muted">—</span>'}</td>
+      <td data-label="Social">${socialHtml || '<span class="muted">—</span>'}</td>
+      <td data-label="Stato"><span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato] || h.stato}</span></td>
+      <td class="row-actions-cell">
+        <div class="row-actions">
+          <button class="small primary" data-action="email" data-id="${h.id}">✉️ Email</button>
+          <button class="small ghost" data-action="edit" data-id="${h.id}">✎</button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+function ensureProtocol(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return "https://" + url;
+}
+
+function shortUrl(url) {
+  if (!url) return "";
+  return url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+}
+
+function socialUrl(net, handle) {
+  if (!handle) return "#";
+  if (/^https?:\/\//i.test(handle)) return handle;
+  const h = handle.replace(/^@/, "");
+  if (net === "ig") return "https://instagram.com/" + h;
+  if (net === "fb") return "https://facebook.com/" + h;
+  if (net === "li") return "https://linkedin.com/company/" + h;
+  return "#";
+}
+
+/* ============================================================
+   POPULATE SELECT (filtri città, form hotel)
+   ============================================================ */
+function populateCitySelects() {
+  const cityFilter = $("#cityFilter");
+  const hotelFormCity = $("#hotelFormCity");
+  // Ordina alfabeticamente le 50 città (CITIES rimane nell'ordine originale per il render principale,
+  // ma i dropdown filtro devono essere alfabetici per UX usabile)
+  const sortedCities = CITIES.slice().sort((a, b) => a[0].localeCompare(b[0], 'it', { sensitivity: 'base' }));
+  cityFilter.innerHTML = '<option value="">🇮🇹 Tutte le città</option>' +
+    sortedCities.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
+  hotelFormCity.innerHTML = sortedCities.map(c => `<option value="${escapeHtml(c[0])}">${escapeHtml(c[0])} (${c[1]})</option>`).join("");
+}
+
+/* ============================================================
+   MODAL HELPERS
+   ============================================================ */
+function openModal(id) { $("#" + id).hidden = false; document.body.style.overflow = "hidden"; }
+function closeModal(id) { $("#" + id).hidden = true; document.body.style.overflow = ""; }
+
+function toast(msg, type) {
+  const t = document.createElement("div");
+  t.className = "toast" + (type ? " " + type : "");
+  t.textContent = msg;
+  $("#toastContainer").appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+/* ============================================================
+   HOTEL CRUD
+   ============================================================ */
+function openHotelModal(hotelId, prefillCity) {
+  const form = $("#hotelForm");
+  form.reset();
+  const isEdit = !!hotelId;
+  $("#hotelModalTitle").textContent = isEdit ? "Modifica hotel" : "Aggiungi hotel";
+  $("#btnDeleteHotel").hidden = !isEdit;
+  if (isEdit) {
+    const h = hotels.find(x => x.id === hotelId);
+    if (!h) return;
+    for (const k of CSV_HEADERS) {
+      if (form.elements[k]) form.elements[k].value = h[k] || "";
+    }
+    form.elements.id.value = h.id;
+  } else if (prefillCity) {
+    form.elements.citta.value = prefillCity;
+  }
+  openModal("hotelModal");
+  setTimeout(() => form.elements.nome_hotel.focus(), 50);
+}
+
+function saveHotelFromForm() {
+  const form = $("#hotelForm");
+  const data = {};
+  for (const k of CSV_HEADERS) {
+    data[k] = form.elements[k] ? form.elements[k].value.trim() : "";
+  }
+  data.stelle = parseInt(data.stelle, 10) || 2;
+  if (!data.nome_hotel) { toast("Nome hotel obbligatorio", "error"); return; }
+  if (!data.citta) { toast("Città obbligatoria", "error"); return; }
+  const found = CITIES.find(c => c[0] === data.citta);
+  if (found) data.provincia = found[1];
+  const id = form.elements.id.value;
+  const now = new Date().toISOString();
+  if (id) {
+    const i = hotels.findIndex(x => x.id === id);
+    if (i >= 0) hotels[i] = { ...hotels[i], ...data, updatedAt: now };
+  } else {
+    hotels.push({ ...data, id: uid(), createdAt: now, updatedAt: now });
+  }
+  saveState();
+  renderAll();
+  closeModal("hotelModal");
+  toast("Hotel salvato", "success");
+}
+
+function deleteHotelById(id) {
+  if (!confirm("Eliminare questo hotel?")) return;
+  hotels = hotels.filter(h => h.id !== id);
+  saveState();
+  renderAll();
+  closeModal("hotelModal");
+  toast("Hotel eliminato", "info");
+}
+
+/* ============================================================
+   EMAIL MODAL
+   ============================================================ */
+function openEmailModal(hotelId, eventoIndex) {
+  const h = hotels.find(x => x.id === hotelId);
+  if (!h) return;
+  const container = $("#emailBodyContainer");
+  const footer = $("#emailFooter");
+  const eventiList = getEventiPerCitta(h.citta);
+  // Se non specificato, default = primo evento (0). Clamp per sicurezza.
+  let selectedIdx = (typeof eventoIndex === "number" && eventoIndex >= 0 && eventoIndex < eventiList.length) ? eventoIndex : 0;
+  const evChoice = eventiList[selectedIdx];
+  const result = generateEmail(h, evChoice);
+
+  if (!result.ok) {
+    container.innerHTML = `
+      <div class="warning-box">
+        <h3>⚠ Dati evento mancanti per ${escapeHtml(result.missing)}</h3>
+        <p>Per generare l'email serve almeno la <strong>data evento</strong> e (raccomandato) la lista delle <strong>strutture</strong> dove opererà il Dream Team Clown a ${escapeHtml(result.missing)}.</p>
+        <button class="primary" id="goToEventi">📅 Configura evento per ${escapeHtml(result.missing)}</button>
+      </div>
+      <p class="muted" style="font-size:0.85rem;">
+        Hotel: <strong>${escapeHtml(h.nome_hotel)}</strong> · ${escapeHtml(h.citta)}<br>
+        Email destinatario: ${h.email ? `<a href="mailto:${escapeHtml(h.email)}">${escapeHtml(h.email)}</a>` : '<em>nessuna email salvata</em>'}
+      </p>`;
+    footer.innerHTML = `<button class="ghost" data-close="emailModal">Chiudi</button>`;
+    setTimeout(() => {
+      const btn = document.getElementById("goToEventi");
+      if (btn) btn.addEventListener("click", () => {
+        closeModal("emailModal");
+        openEventiModal(result.missing);
+      });
+    }, 30);
+    openModal("emailModal");
+    return;
+  }
+
+  const mailtoUrl = buildMailto(h.email, result.subject, result.body);
+  const bodyTooLong = result.body.length > 1800;
+
+  const tipoLabel = "🛒 Banchetto raccolta fondi";
+  // Dropdown selettore eventi (visibile solo se ci sono >1 eventi per la città)
+  const eventSelector = eventiList.length > 1 ? `
+    <div class="email-field" style="margin-bottom:0.6rem;">
+      <label>📅 Scegli evento per ${escapeHtml(h.citta)} (${eventiList.length} disponibili)</label>
+      <select id="emailEventSelect" style="width:100%;font-size:0.95rem;">
+        ${eventiList.map((ev, i) => `<option value="${i}" ${i === selectedIdx ? 'selected' : ''}>${escapeHtml(labelEvento(ev))}</option>`).join("")}
+      </select>
+      <p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Cambia evento → il testo email si aggiorna sotto.</p>
+    </div>
+  ` : "";
+  container.innerHTML = `
+    <div class="email-meta">
+      <strong>Hotel:</strong> ${escapeHtml(h.nome_hotel)} · ${escapeHtml(h.citta)}<br>
+      <strong>Destinatario:</strong> ${h.email ? escapeHtml(h.email) : '<em>nessuna email salvata — aggiungila nel record hotel</em>'}<br>
+      <strong>Stato lead:</strong> <span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato]}</span><br>
+      <strong>Template usato:</strong> ${tipoLabel}
+    </div>
+    ${eventSelector}
+
+    <div class="email-field">
+      <label>Oggetto</label>
+      <input type="text" id="emailSubject" value="${escapeHtml(result.subject)}">
+    </div>
+
+    <div class="email-field">
+      <label>Corpo email</label>
+      <textarea id="emailBody">${escapeHtml(result.body)}</textarea>
+    </div>
+
+    ${bodyTooLong ? `<p class="muted" style="font-size:0.82rem;">⚠ Email piuttosto lunga (${result.body.length} caratteri): alcuni client mail troncano i mailto. Preferisci <strong>Copia testo</strong> e incolla nel client.</p>` : ""}
+
+    <div style="margin-top:1rem;">
+      <label class="muted" style="font-size:0.85rem;">Quando hai inviato l'email, aggiorna lo stato:</label>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.35rem;">
+        ${STATI_LEAD.map(s => `<button class="small ${h.stato === s ? 'primary' : 'ghost'}" data-set-stato="${s}" data-hotel-id="${h.id}">${STATO_LABEL[s]}</button>`).join("")}
+      </div>
+    </div>
+  `;
+
+  footer.innerHTML = `
+    <button class="ghost" data-close="emailModal">Chiudi</button>
+    <button class="ghost" id="btnCopySubj">📋 Copia oggetto</button>
+    <button class="primary" id="btnCopyBody">📋 Copia testo</button>
+    ${h.email ? `<a href="${mailtoUrl}" class="button-link" id="btnMailto"><button class="success">✉️ Apri in client mail</button></a>` : `<button class="ghost" disabled title="Aggiungi prima l'email nel record hotel">✉️ Apri in mail (email mancante)</button>`}
+  `;
+
+  openModal("emailModal");
+
+  setTimeout(() => {
+    document.getElementById("btnCopySubj")?.addEventListener("click", () => {
+      navigator.clipboard.writeText($("#emailSubject").value).then(() => toast("Oggetto copiato", "success"));
+    });
+    document.getElementById("btnCopyBody")?.addEventListener("click", () => {
+      navigator.clipboard.writeText($("#emailBody").value).then(() => toast("Testo copiato", "success"));
+    });
+    // Cambio evento via dropdown → rigenera modal con altro evento
+    document.getElementById("emailEventSelect")?.addEventListener("change", (e) => {
+      const newIdx = parseInt(e.target.value, 10);
+      openEmailModal(hotelId, newIdx);
+    });
+    $$("[data-set-stato]").forEach(b => {
+      b.addEventListener("click", () => {
+        const id = b.dataset.hotelId;
+        const s = b.dataset.setStato;
+        const i = hotels.findIndex(x => x.id === id);
+        if (i >= 0) {
+          hotels[i].stato = s;
+          hotels[i].updatedAt = new Date().toISOString();
+          saveState();
+          renderAll();
+          openEmailModal(id, selectedIdx);
+          toast("Stato aggiornato: " + STATO_LABEL[s], "info");
+        }
+      });
+    });
+  }, 30);
+}
+
+function buildMailto(to, subject, body) {
+  const params = new URLSearchParams();
+  params.set("subject", subject);
+  params.set("body", body);
+  // URLSearchParams uses + for spaces — mailto prefers %20
+  const qs = params.toString().replace(/\+/g, "%20");
+  return "mailto:" + encodeURIComponent(to || "") + "?" + qs;
+}
+
+/* ============================================================
+   EVENTI MODAL
+   ============================================================ */
+function openEventiModal(scrollToCity) {
+  // In modalità sync il modal locale è fuorviante (i dati vengono sovrascritti
+  // al prossimo sync). Reindirizza l'utente al tab Eventi del Sheet.
+  if (isSyncMode()) {
+    if (!config.sheet_edit_url) {
+      toast("In modalità sync gli eventi vanno aggiunti nel tab Eventi del Google Sheet. Configura prima l'URL del Sheet.", "error");
+      return;
+    }
+    // Costruisce URL che apre il Sheet sulla tab Eventi (gid=...).
+    // Il sheet_edit_url di solito ha #gid=0 (tab Hotel). Lo strippiamo e lasciamo che Google apra la prima tab.
+    const baseUrl = config.sheet_edit_url.split('#')[0];
+    const ok = confirm(
+      "In modalità Google Sheet condiviso, gli eventi (data + strutture per città) si aggiungono direttamente nel tab \"Eventi\" del foglio.\n\n" +
+      "Apertura del Sheet — vai sulla tab \"Eventi\" in basso e aggiungi una riga per ogni città in cui sarà presente il Dream Team Clown.\n\n" +
+      "Formato strutture: separate da PUNTO E VIRGOLA (es: \"RSA Villa Canova; RSA Villa Giselle\").\n\n" +
+      "Continua?"
+    );
+    if (ok) window.open(baseUrl, "_blank");
+    return;
+  }
+  renderEventiList();
+  openModal("eventiModal");
+  if (scrollToCity) {
+    setTimeout(() => {
+      const el = document.querySelector(`[data-evento-city="${scrollToCity}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }
+}
+
+function renderEventiList() {
+  const q = ($("#eventiSearch").value || "").trim().toLowerCase();
+  const list = $("#eventiList");
+  list.innerHTML = "";
+  for (const [city, prov] of CITIES) {
+    if (q && !city.toLowerCase().includes(q)) continue;
+    const ev = eventi[city] || {};
+    const configured = !!ev.data_evento;
+    const card = document.createElement("div");
+    card.className = "event-card" + (configured ? " configured" : "");
+    card.dataset.eventoCity = city;
+    card.innerHTML = `
+      <h3><span class="dot"></span> ${escapeHtml(city)} <span class="muted" style="font-weight:400;font-size:0.78rem;">(${prov})</span></h3>
+      <div class="form-grid" data-city="${escapeHtml(city)}">
+        <label>Data evento (testo libero)
+          <input type="text" data-field="data_evento" value="${escapeHtml(ev.data_evento || '')}" placeholder="es. 11-12 Aprile 2026">
+        </label>
+        <label>Strutture (separate da virgola)
+          <input type="text" data-field="strutture" value="${escapeHtml((ev.strutture || []).join(', '))}" placeholder="RSA Villa Canova, RSA Villa Giselle">
+        </label>
+        <label>Nome referente
+          <input type="text" data-field="referente_nome" value="${escapeHtml(ev.referente_nome || REFERENTE_DEFAULT.referente_nome)}">
+        </label>
+        <label>Ruolo referente
+          <input type="text" data-field="referente_ruolo" value="${escapeHtml(ev.referente_ruolo || REFERENTE_DEFAULT.referente_ruolo)}">
+        </label>
+        <label class="full">Contatto referente (email/tel — opzionale, appare in firma)
+          <input type="text" data-field="referente_contatto" value="${escapeHtml(ev.referente_contatto || '')}">
+        </label>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+}
+
+function saveAllEventi() {
+  const cards = $$("#eventiList .form-grid[data-city]");
+  for (const card of cards) {
+    const city = card.dataset.city;
+    const get = (f) => card.querySelector(`[data-field="${f}"]`).value.trim();
+    const data_evento = get("data_evento");
+    const strutture = get("strutture").split(",").map(s => s.trim()).filter(Boolean);
+    const referente_nome = get("referente_nome");
+    const referente_ruolo = get("referente_ruolo");
+    const referente_contatto = get("referente_contatto");
+    if (data_evento || strutture.length || referente_contatto) {
+      eventi[city] = { data_evento, strutture, referente_nome, referente_ruolo, referente_contatto };
+    } else {
+      delete eventi[city];
+    }
+  }
+  saveState();
+  renderAll();
+  closeModal("eventiModal");
+  toast("Eventi salvati", "success");
+}
+
+/* ============================================================
+   IMPORT / EXPORT
+   ============================================================ */
+function handleFileImport(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    let parsed;
+    if (file.name.toLowerCase().endsWith(".json")) {
+      try {
+        const j = JSON.parse(text);
+        const arr = Array.isArray(j) ? j : (j.hotels || []);
+        parsed = { rows: arr.map(h => normalizeImportedHotel(h)), errors: [] };
+      } catch (err) { toast("JSON non valido: " + err.message, "error"); return; }
+    } else {
+      parsed = csvToHotels(text);
+    }
+    if (parsed.errors.length) {
+      console.warn("Import warnings:", parsed.errors);
+    }
+    if (!parsed.rows.length) {
+      toast("Nessuna riga valida trovata nel file", "error");
+      if (parsed.errors.length) alert("Dettagli:\n" + parsed.errors.join("\n"));
+      return;
+    }
+    pendingImport = { rows: parsed.rows, filename: file.name, warnings: parsed.errors };
+    $("#importFileName").textContent = file.name;
+    $("#importRowCount").textContent = parsed.rows.length;
+    openModal("importModal");
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function normalizeImportedHotel(h) {
+  const out = {
+    id: h.id || uid(),
+    citta: normalizeCityName(h.citta || ""),
+    provincia: h.provincia || "",
+    nome_hotel: (h.nome_hotel || h.nome || "").trim(),
+    indirizzo: h.indirizzo || "",
+    stelle: parseInt(h.stelle, 10) || 2,
+    telefono: h.telefono || "",
+    email: h.email || "",
+    sito_web: h.sito_web || h.sito || "",
+    instagram: h.instagram || "",
+    facebook: h.facebook || "",
+    linkedin: h.linkedin || "",
+    altro_social: h.altro_social || "",
+    note: h.note || "",
+    stato: STATI_LEAD.includes(h.stato) ? h.stato : "da_contattare",
+    createdAt: h.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (!out.provincia && out.citta) {
+    const f = CITIES.find(c => c[0] === out.citta);
+    if (f) out.provincia = f[1];
+  }
+  return out;
+}
+
+function applyImport(mode) {
+  if (!pendingImport) return;
+  const rows = pendingImport.rows;
+  if (mode === "replace") {
+    if (hotels.length > 0 && !confirm("Cancellare TUTTI i " + hotels.length + " hotel esistenti e sostituirli con i nuovi?")) return;
+    hotels = rows;
+  } else if (mode === "merge") {
+    const map = new Map();
+    for (const h of hotels) {
+      map.set((h.nome_hotel + "|" + h.citta).toLowerCase(), h);
+    }
+    let updated = 0, added = 0;
+    for (const r of rows) {
+      const key = (r.nome_hotel + "|" + r.citta).toLowerCase();
+      if (map.has(key)) {
+        const existing = map.get(key);
+        for (const k of CSV_HEADERS) {
+          if (r[k] && (!existing[k] || k === "stato")) existing[k] = r[k];
+        }
+        existing.updatedAt = new Date().toISOString();
+        updated++;
+      } else {
+        hotels.push(r);
+        added++;
+      }
+    }
+    toast(`Merge: +${added} nuovi, ${updated} aggiornati`, "success");
+  } else {
+    // append
+    hotels.push(...rows);
+    toast(`+${rows.length} hotel aggiunti`, "success");
+  }
+  saveState();
+  renderAll();
+  closeModal("importModal");
+  pendingImport = null;
+  if (mode === "replace") toast(`${rows.length} hotel importati (replace)`, "success");
+}
+
+function exportCSV() {
+  const csv = serializeCSV(hotels);
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ts = new Date().toISOString().slice(0,10);
+  a.download = `lead-hotel-${ts}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Esportati ${hotels.length} hotel`, "success");
+}
+
+function downloadEmptyTemplate() {
+  const sample = [
+    {
+      id: "", citta: "Firenze", provincia: "FI",
+      nome_hotel: "Hotel Esempio (cancella questa riga)",
+      indirizzo: "Via Roma 1, 50100 Firenze",
+      stelle: 3, telefono: "+39 055 1234567",
+      email: "info@hotelesempio.it", sito_web: "https://hotelesempio.it",
+      instagram: "@hotelesempio", facebook: "hotelesempio", linkedin: "",
+      altro_social: "", note: "Riga di esempio — sovrascrivi con dati reali",
+      stato: "da_contattare"
+    }
+  ];
+  const csv = serializeCSV(sample);
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template-import-lead-hotel.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   DEMO DATA
+   ============================================================ */
+function loadDemo() {
+  if (hotels.length > 0) {
+    if (!confirm("Aggiungere 3 hotel demo a Firenze ai dati esistenti?")) return;
+  }
+  const now = new Date().toISOString();
+  const demoHotels = [
+    {
+      id: uid(), citta: "Firenze", provincia: "FI",
+      nome_hotel: "[DEMO] Hotel del Sole",
+      indirizzo: "Via dei Servi 12, 50122 Firenze",
+      stelle: 3, telefono: "+39 055 0000001",
+      email: "info@hoteldelsole-demo.it", sito_web: "https://hoteldelsole-demo.it",
+      instagram: "@hoteldelsole_demo", facebook: "hoteldelsole.demo",
+      linkedin: "", altro_social: "",
+      note: "⚠ DATI DI ESEMPIO — sostituire prima dell'outreach reale",
+      stato: "da_contattare", createdAt: now, updatedAt: now
+    },
+    {
+      id: uid(), citta: "Firenze", provincia: "FI",
+      nome_hotel: "[DEMO] Albergo Centrale",
+      indirizzo: "Piazza della Stazione 5, 50123 Firenze",
+      stelle: 2, telefono: "+39 055 0000002",
+      email: "prenotazioni@albergocentrale-demo.it",
+      sito_web: "albergocentrale-demo.it",
+      instagram: "", facebook: "", linkedin: "", altro_social: "",
+      note: "⚠ DATI DI ESEMPIO", stato: "da_contattare",
+      createdAt: now, updatedAt: now
+    },
+    {
+      id: uid(), citta: "Firenze", provincia: "FI",
+      nome_hotel: "[DEMO] B&B Giardino",
+      indirizzo: "Borgo Pinti 28, 50121 Firenze",
+      stelle: 2, telefono: "",
+      email: "ciao@bbgiardino-demo.it", sito_web: "",
+      instagram: "@bb_giardino_demo", facebook: "", linkedin: "",
+      altro_social: "tiktok.com/@bbgiardino_demo",
+      note: "⚠ DATI DI ESEMPIO", stato: "contattato",
+      createdAt: now, updatedAt: now
+    }
+  ];
+  hotels.push(...demoHotels);
+  if (!eventi["Firenze"]) {
+    eventi["Firenze"] = {
+      data_evento: "11-12 Aprile 2026",
+      strutture: ["RSA Villa Canova", "RSA Guido Raggi", "RSA Villa Giselle"],
+      referente_nome: REFERENTE_DEFAULT.referente_nome,
+      referente_ruolo: REFERENTE_DEFAULT.referente_ruolo,
+      referente_contatto: ""
+    };
+  }
+  saveState();
+  renderAll();
+  toast("Demo caricato: 3 hotel Firenze + evento configurato", "success");
+}
+
+/* ============================================================
+   CONFIG MODAL (v2)
+   ============================================================ */
+function openConfigModal() {
+  const form = $("#configForm");
+  form.elements.hotel_csv_url.value = config.hotel_csv_url || "";
+  form.elements.eventi_csv_url.value = config.eventi_csv_url || "";
+  form.elements.sheet_edit_url.value = config.sheet_edit_url || "";
+  openModal("configModal");
+}
+
+function saveConfigFromForm() {
+  const form = $("#configForm");
+  config = {
+    hotel_csv_url: form.elements.hotel_csv_url.value.trim(),
+    eventi_csv_url: form.elements.eventi_csv_url.value.trim(),
+    sheet_edit_url: form.elements.sheet_edit_url.value.trim()
+  };
+  saveConfig();
+  updateSyncBadge();
+  applySyncMode();
+  closeModal("configModal");
+  if (isSyncMode()) {
+    syncFromSheet();
+  } else {
+    toast("Configurazione svuotata — modalità locale attiva", "info");
+  }
+}
+
+function clearConfig() {
+  if (!confirm("Cancellare gli URL configurati e tornare a modalità locale?")) return;
+  config = {};
+  saveConfig();
+  updateSyncBadge();
+  applySyncMode();
+  closeModal("configModal");
+  toast("Tornato in modalità locale", "info");
+}
+
+/** Mostra/nasconde elementi UI in base alla modalità (sync vs locale). */
+function applySyncMode() {
+  const sync = isSyncMode();
+  $("#btnSync").hidden = !sync;
+  $("#btnOpenSheet").hidden = !(sync && config.sheet_edit_url);
+  // In sync mode i dati arrivano dal Sheet: nascondi modifica locale per evitare confusione
+  $("#btnAddHotel").hidden = sync;
+  $("#btnDemo").hidden = sync;
+  // Import CSV e Reset rimangono utili anche in sync mode (backup/recovery)
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+function resetAll() {
+  const confirmText = prompt(`Per cancellare TUTTI i dati locali (${hotels.length} hotel, ${Object.keys(eventi).length} eventi) digita ELIMINA in maiuscolo:`);
+  if (confirmText !== "ELIMINA") {
+    toast("Reset annullato", "info");
+    return;
+  }
+  hotels = [];
+  eventi = {};
+  localStorage.removeItem(STORAGE_KEY_HOTELS);
+  localStorage.removeItem(STORAGE_KEY_EVENTI);
+  renderAll();
+  toast("Tutti i dati locali cancellati", "info");
+}
+
+/* ============================================================
+   RENDER ALL + EVENT WIRING
+   ============================================================ */
+function renderAll() {
+  renderStats();
+  renderCityList();
+}
+
+function wireEvents() {
+  // Filtri
+  $("#searchBox").addEventListener("input", renderCityList);
+  $("#cityFilter").addEventListener("change", renderCityList);
+  $("#statusFilter").addEventListener("change", renderCityList);
+  $("#starsFilter").addEventListener("change", renderCityList);
+
+  // Toolbar
+  $("#btnSync").addEventListener("click", syncFromSheet);
+  $("#btnConfig").addEventListener("click", openConfigModal);
+  $("#btnConfigSave").addEventListener("click", saveConfigFromForm);
+  $("#btnConfigClear").addEventListener("click", clearConfig);
+  $("#btnOpenSheet").addEventListener("click", () => {
+    if (config.sheet_edit_url) window.open(config.sheet_edit_url, "_blank");
+  });
+  $("#btnAddHotel").addEventListener("click", () => openHotelModal());
+  $("#btnExport").addEventListener("click", exportCSV);
+  $("#btnEventi").addEventListener("click", () => openEventiModal());
+  $("#btnDemo").addEventListener("click", loadDemo);
+  $("#btnDownloadTemplate").addEventListener("click", downloadEmptyTemplate);
+  $("#btnReset").addEventListener("click", resetAll);
+
+  $("#csvImport").addEventListener("change", (e) => {
+    const f = e.target.files[0];
+    if (f) handleFileImport(f);
+    e.target.value = "";
+  });
+
+  // Hotel modal
+  $("#btnSaveHotel").addEventListener("click", saveHotelFromForm);
+  $("#btnDeleteHotel").addEventListener("click", () => {
+    const id = $("#hotelForm").elements.id.value;
+    if (id) deleteHotelById(id);
+  });
+
+  // Eventi modal
+  $("#btnSaveEventi").addEventListener("click", saveAllEventi);
+  $("#eventiSearch").addEventListener("input", renderEventiList);
+
+  // Import modal
+  $$("[data-import-mode]").forEach(b => {
+    b.addEventListener("click", () => applyImport(b.dataset.importMode));
+  });
+
+  // Chiudi modali generici
+  document.addEventListener("click", (e) => {
+    const closeId = e.target.getAttribute("data-close");
+    if (closeId) closeModal(closeId);
+  });
+
+  // Click delegato su table actions
+  $("#cityList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === "email") openEmailModal(btn.dataset.id);
+    else if (action === "edit") openHotelModal(btn.dataset.id);
+    else if (action === "add-here") openHotelModal(null, btn.dataset.city);
+  });
+
+  // ESC chiude modali
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      $$(".modal-backdrop").forEach(m => { if (!m.hidden) closeModal(m.id); });
+    }
+  });
+
+  // Click su backdrop chiude modale
+  $$(".modal-backdrop").forEach(m => {
+    m.addEventListener("click", (e) => {
+      if (e.target === m) closeModal(m.id);
+    });
+  });
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function init() {
+  console.log("%c[Dream Team Clown · Lead Centri Commerciali] build " + BUILD_VERSION, "color:#2563a8;font-weight:bold;");
+  // Indicatore versione in basso a destra (per verificare quale build è attiva online vs locale)
+  const verEl = document.createElement("div");
+  verEl.style.cssText = "position:fixed;bottom:6px;right:8px;font-size:10px;color:#9b9b9b;font-family:monospace;z-index:5;pointer-events:none;background:rgba(255,255,255,0.7);padding:2px 6px;border-radius:4px;";
+  verEl.textContent = "build " + BUILD_VERSION;
+  document.body.appendChild(verEl);
+
+  loadState();
+  populateCitySelects();
+  wireEvents();
+  applySyncMode();
+  updateSyncBadge();
+  renderAll();
+  // Auto-sync se config presente
+  if (isSyncMode()) {
+    syncFromSheet();
+  }
+  // Refresh badge ogni minuto (per "X min fa")
+  setInterval(updateSyncBadge, 60000);
+}
+
+init();
+</script>
+</body>
+</html>
