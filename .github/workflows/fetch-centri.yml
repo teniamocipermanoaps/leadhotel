@@ -1,0 +1,45 @@
+name: Fetch Centri Commerciali (OSM → Google Sheet Centri)
+
+on:
+  # Domenica notte 03:00 UTC (dopo Overpass hotel main + extended)
+  schedule:
+    - cron: "0 3 * * 0"
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo simulazione (non scrive nel Sheet)"
+        required: false
+        default: "false"
+      city:
+        description: "Limita a una sola città (opzionale, es: Roma)"
+        required: false
+        default: ""
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run fetch_overpass_centri
+        env:
+          CENTRI_APPS_SCRIPT_URL: ${{ secrets.CENTRI_APPS_SCRIPT_URL }}
+          CENTRI_APPS_SCRIPT_SECRET: ${{ secrets.CENTRI_APPS_SCRIPT_SECRET }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.city }}" ]; then
+            ARGS="$ARGS --city ${{ github.event.inputs.city }}"
+          fi
+          python execution/scripts/fetch_overpass_centri.py $ARGS
