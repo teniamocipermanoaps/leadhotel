@@ -1,0 +1,45 @@
+name: Fetch Supermercati MAIN (50 città → Google Sheet Supermercati)
+
+on:
+  # Domenica 04:00 UTC (dopo hotel main/extended e centri)
+  schedule:
+    - cron: "0 4 * * 0"
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo simulazione (non scrive nel Sheet)"
+        required: false
+        default: "false"
+      city:
+        description: "Limita a una sola città (opzionale, es: Firenze)"
+        required: false
+        default: ""
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run fetch_overpass_supermercati (dataset main)
+        env:
+          SUPER_APPS_SCRIPT_URL: ${{ secrets.SUPER_APPS_SCRIPT_URL }}
+          SUPER_APPS_SCRIPT_SECRET: ${{ secrets.SUPER_APPS_SCRIPT_SECRET }}
+        run: |
+          ARGS="--dataset main"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.city }}" ]; then
+            ARGS="$ARGS --city ${{ github.event.inputs.city }}"
+          fi
+          python execution/scripts/fetch_overpass_supermercati.py $ARGS
