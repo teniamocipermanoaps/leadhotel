@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dream Team Clown · Lead Centri Commerciali — Teniamoci per Mano APS</title>
-<!-- Favicon inline SVG (carrello) — evita 404 favicon.ico -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛒%3C/text%3E%3C/svg%3E">
+<title>Dream Team Clown · Lead Supermercati — Teniamoci per Mano APS</title>
+<!-- Favicon inline SVG (carrello spesa) — evita 404 favicon.ico -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🛍%3C/text%3E%3C/svg%3E">
 <!-- Aggiorna anche BUILD_VERSION del giorno (in script) se modifichi sostanzialmente la dashboard -->
 
 <style>
@@ -18,16 +18,16 @@
    - CITIES          → elenco città / province
    ========================================================================= */
 :root {
-  --c-primary: #2563a8;
-  --c-primary-dark: #1b4a80;
-  --c-secondary: #1e3a4c;
-  --c-accent: #f4a261;
-  --c-bg: #f4f7fa;
+  --c-primary: #2e7d4f;
+  --c-primary-dark: #24623d;
+  --c-secondary: #1f3d2c;
+  --c-accent: #e9b44c;
+  --c-bg: #f4faf6;
   --c-surface: #ffffff;
-  --c-surface-alt: #e8eef4;
+  --c-surface-alt: #e6f0e9;
   --c-text: #1a1a1a;
   --c-text-muted: #6b6b6b;
-  --c-border: #d5dee5;
+  --c-border: #d3e2d8;
   --c-success: #2a9d8f;
   --c-danger: #e63946;
   --c-warning: #f4a261;
@@ -606,11 +606,11 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 <header class="app-header">
   <div class="header-row">
     <div class="brand">
-      <h1><span class="clown-dot"></span> Dream Team Clown · Lead Centri Commerciali</h1>
-      <p>Teniamoci per Mano APS — banchetti raccolta fondi nei centri commerciali</p>
+      <h1><span class="clown-dot"></span> Dream Team Clown · Lead Supermercati</h1>
+      <p>Teniamoci per Mano APS — banchetti raccolta fondi nei supermercati</p>
     </div>
     <div class="filters">
-      <input type="search" id="searchBox" placeholder="🔎 Cerca centro, indirizzo, email...">
+      <input type="search" id="searchBox" placeholder="🔎 Cerca supermercato, insegna, indirizzo...">
       <select id="cityFilter" aria-label="Filtra per città"></select>
       <select id="statusFilter" aria-label="Filtra per stato">
         <option value="">Tutti gli stati</option>
@@ -630,7 +630,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 
 <!-- ===================== STATS ===================== -->
 <section class="stats" id="statsBar">
-  <div class="stat"><span class="num" id="statTotHotels">0</span><span class="label">Centri totali</span></div>
+  <div class="stat"><span class="num" id="statTotHotels">0</span><span class="label">Supermercati totali</span></div>
   <div class="stat"><span class="num" id="statTotCities">0</span><span class="label">Città con lead</span></div>
   <div class="stat"><span class="num" id="statContacted">0</span><span class="label">Contattati</span></div>
   <div class="stat"><span class="num" id="statPositive">0</span><span class="label">Risposte positive</span></div>
@@ -839,7 +839,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-06-23-centri-no-stelle";
+const BUILD_VERSION = "2026-07-12-supermercati-v1";
 
 /* ============================================================
    CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
@@ -848,9 +848,9 @@ const BUILD_VERSION = "2026-06-23-centri-no-stelle";
    Per disattivare la default + tornare modalità locale: clic su "⚙ Sorgente
    dati" → svuota i campi → Salva.
    ============================================================ */
-const DEFAULT_HOTEL_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIurc1W0f_TJaOJsyyEogUEU9x9wiumg38MVHoFzmGMJQP6bOVjxbkQR3iL32xBjgC7ZJ0-1goGsYj/pub?gid=0&single=true&output=csv";
-const DEFAULT_EVENTI_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTIurc1W0f_TJaOJsyyEogUEU9x9wiumg38MVHoFzmGMJQP6bOVjxbkQR3iL32xBjgC7ZJ0-1goGsYj/pub?gid=1437400262&single=true&output=csv";
-const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1ECqIM8L_Bw_A3xqmlvFoSPh3FlUzr92f-CbE1gryAjo/edit?usp=drive_link";
+const DEFAULT_HOTEL_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOMKjQcXX5My9om7PYl02Q7leyOG-5gseeLSuzHaw0oA-rrjM3Ge6JGiTErGnc1MuvMdVyz0O4LpNO/pub?gid=0&single=true&output=csv";
+const DEFAULT_EVENTI_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOMKjQcXX5My9om7PYl02Q7leyOG-5gseeLSuzHaw0oA-rrjM3Ge6JGiTErGnc1MuvMdVyz0O4LpNO/pub?gid=1181086111&single=true&output=csv";
+const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1BV-yA76oWtxwBZZh4WE6sew1iVYdqKWthM3l-4P8lX4/edit?gid=0#gid=0";
 
 /* ============================================================
    COSTANTI CONFIGURABILI
@@ -939,11 +939,11 @@ Il nostro progetto di punta, il Dream Team Clown, è una squadra di volontari fo
 
 Per sostenere e far conoscere questo progetto, organizziamo iniziative di sensibilizzazione e raccolta fondi sul territorio. Vi scriviamo per chiedere la Vostra ospitalità:
 
-ci piacerebbe poter allestire un banchetto informativo dei nostri volontari presso il Vostro centro commerciale, in occasione dell'iniziativa prevista a {{CITTA}}:
+ci piacerebbe poter allestire un banchetto informativo dei nostri volontari presso il Vostro punto vendita, in occasione dell'iniziativa prevista a {{CITTA}}:
 {{STRUTTURE_LISTA}}
 nelle date: {{DATA_EVENTO}}
 
-Sarebbe un'occasione per noi di incontrare i Vostri visitatori, raccontare le nostre attività e raccogliere fondi a sostegno della clownterapia — e per il Vostro centro un gesto concreto di responsabilità sociale, valorizzato nella nostra comunicazione (sito web, social, materiali dell'evento).
+Sarebbe un'occasione per noi di incontrare i Vostri clienti, raccontare le nostre attività e raccogliere fondi a sostegno della clownterapia — e per il Vostro punto vendita un gesto concreto di responsabilità sociale, valorizzato nella nostra comunicazione (sito web, social, materiali dell'evento).
 
 In alternativa o in aggiunta, sarà possibile sostenerci con una donazione libera sul conto corrente dell'associazione:
 
@@ -977,8 +977,8 @@ const CSV_HEADERS_V2 = [
   "fonte","osm_id","updated_at"
 ];
 
-const STORAGE_KEY_CONFIG = "tpm_centri_config_v2";
-const STORAGE_KEY_SYNC   = "tpm_centri_last_sync_v2";
+const STORAGE_KEY_CONFIG = "tpm_super_config_v2";
+const STORAGE_KEY_SYNC   = "tpm_super_last_sync_v2";
 
 const STATI_LEAD = ["da_contattare","contattato","positivo","negativo","no_risposta"];
 const STATO_LABEL = {
@@ -992,8 +992,8 @@ const STATO_LABEL = {
 /* ============================================================
    STATE — persistito in localStorage
    ============================================================ */
-const STORAGE_KEY_HOTELS = "tpm_centri_v1";
-const STORAGE_KEY_EVENTI = "tpm_centri_eventi_v1";
+const STORAGE_KEY_HOTELS = "tpm_super_v1";
+const STORAGE_KEY_EVENTI = "tpm_super_eventi_v1";
 
 /** @type {Array<Hotel>} */
 let hotels = [];
@@ -1113,11 +1113,11 @@ function csvToHotels(text) {
   const errors = [];
   const idx = {};
   CSV_HEADERS.forEach(k => { idx[k] = header.indexOf(k); });
-  // Centri: il CSV usa "nome_centro". Mappa al campo interno "nome_hotel".
-  const idxNomeCentro = header.indexOf("nome_centro");
-  if (idxNomeCentro >= 0) idx.nome_hotel = idxNomeCentro;
+  // Supermercati: il CSV usa "nome_super". Mappa al campo interno "nome_hotel".
+  const idxNomeSuper = header.indexOf("nome_super");
+  if (idxNomeSuper >= 0) idx.nome_hotel = idxNomeSuper;
   if (idx.nome_hotel < 0 || idx.citta < 0) {
-    errors.push("Header CSV non valido — manca colonna nome (nome_centro/nome_hotel) e/o 'citta'.");
+    errors.push("Header CSV non valido — manca colonna nome (nome_super/nome_hotel) e/o 'citta'.");
     return { rows: [], errors };
   }
   const out = [];
@@ -1147,11 +1147,15 @@ function csvToHotels(text) {
     const fonteFromCsv = idxFonte >= 0 ? (row[idxFonte] || "").trim() : "";
     const osmIdFromCsv = idxOsmId >= 0 ? (row[idxOsmId] || "").trim() : "";
     const updatedFromCsv = idxUpdatedAt >= 0 ? (row[idxUpdatedAt] || "").trim() : "";
+    // Supermercati: campo "insegna" (brand OSM: Coop, Conad, Lidl...) per raggruppare per catena
+    const idxInsegna = header.indexOf("insegna");
+    const insegnaFromCsv = idxInsegna >= 0 ? (row[idxInsegna] || "").trim() : "";
     out.push({
       id: idFromCsv || uid(),
       citta: cittaCanon || cittaRaw,
       provincia: provincia,
       nome_hotel: nome,
+      insegna: insegnaFromCsv,
       indirizzo: get("indirizzo"),
       stelle: isNaN(stelleRaw) ? 0 : Math.min(5, Math.max(0, stelleRaw)),
       telefono: get("telefono"),
@@ -1397,7 +1401,7 @@ function applyFilters(list) {
     if (status && h.stato !== status) return false;
     if (minStars && (h.stelle || 0) < minStars) return false;
     if (q) {
-      const hay = (h.nome_hotel + " " + h.indirizzo + " " + h.email + " " + h.telefono + " " + h.sito_web).toLowerCase();
+      const hay = (h.nome_hotel + " " + (h.insegna || "") + " " + h.indirizzo + " " + h.email + " " + h.telefono + " " + h.sito_web).toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1525,7 +1529,7 @@ function renderCityBlock(city, prov, allRows, visibleRows, extra=false) {
 
   let bodyHtml = "";
   if (visibleRows.length === 0) {
-    bodyHtml = `<table class="hotels"><tbody><tr class="empty-row"><td colspan="8">Nessun centro ${allRows.length > 0 ? "corrisponde ai filtri" : "in questa città"}.</td></tr></tbody></table>`;
+    bodyHtml = `<table class="hotels"><tbody><tr class="empty-row"><td colspan="9">Nessun supermercato ${allRows.length > 0 ? "corrisponde ai filtri" : "in questa città"}.</td></tr></tbody></table>`;
   } else {
     bodyHtml = `
       <div class="tbl-wrap">
@@ -1533,6 +1537,7 @@ function renderCityBlock(city, prov, allRows, visibleRows, extra=false) {
         <thead>
           <tr>
             <th>Nome</th>
+            <th>Insegna</th>
             <th>Indirizzo</th>
             <th>Telefono</th>
             <th>Email</th>
@@ -1575,6 +1580,7 @@ function renderRow(h) {
   return `
     <tr data-id="${h.id}">
       <td data-label="Nome"><strong>${escapeHtml(h.nome_hotel)}</strong></td>
+      <td data-label="Insegna">${h.insegna ? escapeHtml(h.insegna) : '<span class="muted">—</span>'}</td>
       <td data-label="Indirizzo">${escapeHtml(h.indirizzo) || '<span class="muted">—</span>'}</td>
       <td data-label="Telefono">${h.telefono ? `<a href="tel:${escapeHtml(h.telefono)}">${escapeHtml(h.telefono)}</a>` : '<span class="muted">—</span>'}</td>
       <td data-label="Email">${h.email ? `<a href="mailto:${escapeHtml(h.email)}">${escapeHtml(h.email)}</a>` : '<span class="muted">—</span>'}</td>
@@ -2261,7 +2267,7 @@ function wireEvents() {
    BOOT
    ============================================================ */
 function init() {
-  console.log("%c[Dream Team Clown · Lead Centri Commerciali] build " + BUILD_VERSION, "color:#2563a8;font-weight:bold;");
+  console.log("%c[Dream Team Clown · Lead Supermercati] build " + BUILD_VERSION, "color:#2e7d4f;font-weight:bold;");
   // Indicatore versione in basso a destra (per verificare quale build è attiva online vs locale)
   const verEl = document.createElement("div");
   verEl.style.cssText = "position:fixed;bottom:6px;right:8px;font-size:10px;color:#9b9b9b;font-family:monospace;z-index:5;pointer-events:none;background:rgba(255,255,255,0.7);padding:2px 6px;border-radius:4px;";
