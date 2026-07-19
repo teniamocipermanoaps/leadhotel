@@ -130,6 +130,8 @@ class SupermercatoRecord:
     telefono: str
     email: str
     sito_web: str
+    lat: str              # coordinate OSM — ESSENZIALI per il match Google Places
+    lon: str              # (senza, Google restituisce sempre lo stesso negozio omonimo)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -239,6 +241,13 @@ def osm_element_to_record(el: dict, city_name: str, provincia: str) -> Supermerc
         return None
     osm_type = el.get("type", "?")[0]
     osm_id = f"{osm_type}{el.get('id')}"
+    # Coordinate: i node hanno lat/lon diretti; way/relation hanno "center" (out center)
+    lat = el.get("lat")
+    lon = el.get("lon")
+    if lat is None or lon is None:
+        center = el.get("center") or {}
+        lat = center.get("lat")
+        lon = center.get("lon")
     return SupermercatoRecord(
         osm_id=osm_id,
         citta=city_name,
@@ -249,6 +258,8 @@ def osm_element_to_record(el: dict, city_name: str, provincia: str) -> Supermerc
         telefono=sanitize_phone(tags.get("phone") or tags.get("contact:phone") or ""),
         email=(tags.get("email") or tags.get("contact:email") or "").strip(),
         sito_web=normalize_url(tags.get("website") or tags.get("contact:website") or ""),
+        lat=str(lat) if lat is not None else "",
+        lon=str(lon) if lon is not None else "",
     )
 
 

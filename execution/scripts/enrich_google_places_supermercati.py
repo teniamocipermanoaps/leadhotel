@@ -68,6 +68,8 @@ class Candidate:
     citta: str
     provincia: str
     indirizzo: str
+    lat: str = ""
+    lon: str = ""
 
 
 @dataclass
@@ -145,6 +147,12 @@ def filter_candidates(rows: list[dict]) -> list[Candidate]:
         osm_id = (r.get("osm_id") or "").strip()
         if not osm_id:
             continue
+        lat = (r.get("lat") or "").strip()
+        lon = (r.get("lon") or "").strip()
+        # ⚠️ SENZA COORDINATE non arricchiamo: Google restituirebbe sempre lo stesso
+        # negozio per tutti gli omonimi di catena (bug dati errati del 2026-07-19).
+        if not lat or not lon:
+            continue
         candidates.append(Candidate(
             osm_id=osm_id,
             nome_super=(r.get("nome_super") or "").strip(),
@@ -152,6 +160,8 @@ def filter_candidates(rows: list[dict]) -> list[Candidate]:
             citta=(r.get("citta") or "").strip(),
             provincia=(r.get("provincia") or "").strip(),
             indirizzo=(r.get("indirizzo") or "").strip(),
+            lat=lat,
+            lon=lon,
         ))
     # Priorità: con insegna prima (0), senza insegna dopo (1); poi nome
     candidates.sort(key=lambda c: (0 if c.insegna else 1, c.nome_super.lower()))
@@ -162,27 +172,51 @@ def filter_candidates(rows: list[dict]) -> list[Candidate]:
 # GOOGLE PLACES
 # ============================================================
 
-def places_find(api_key: str, query: str) -> str | None:
+def places_find(api_key: str, query: str, lat: str = "", lon: str = "") -> tuple[str, dict] | tuple[None, None]:
+    """Find Place con locationbias sulle coordinate OSM.
+
+    CRITICO per le catene: senza locationbias, cercare "Conad Roma" restituisce
+    sempre lo STESSO negozio per tutti i 100+ Conad di Roma. Con il bias sul punto
+    GPS, Google restituisce il punto vendita effettivamente in quella posizione.
+
+    Ritorna (place_id, geometry) per permettere la verifica di distanza.
+    """
     params = {
         "key": api_key,
         "input": query,
         "inputtype": "textquery",
         "language": "it",
-        "fields": "place_id,name,formatted_address",
+        "fields": "place_id,name,formatted_address,geometry",
     }
+    if lat and lon:
+        # circle:raggio_metri@lat,lng — 400 m attorno al punto OSM
+        params["locationbias"] = f"circle:400@{lat},{lon}"
     try:
         data = http_get_json(PLACES_FIND_URL, params)
     except Exception as e:
         print(f"    ERR find: {e}", file=sys.stderr)
-        return None
+        return None, None
     status = data.get("status", "")
     if status == "ZERO_RESULTS":
-        return None
+        return None, None
     if status != "OK":
         print(f"    Find status {status}: {data.get('error_message','')}", file=sys.stderr)
-        return None
+        return None, None
     cands = data.get("candidates", [])
-    return cands[0].get("place_id") if cands else None
+    if not cands:
+        return None, None
+    return cands[0].get("place_id"), (cands[0].get("geometry") or {})
+
+
+def distanza_metri(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Distanza approssimata in metri (formula equirettangolare, ok per brevi distanze)."""
+    import math
+    R = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    x = dlon * math.cos((p1 + p2) / 2)
+    return math.sqrt(x * x + dlat * dlat) * R
 
 
 def places_details(api_key: str, place_id: str) -> dict | None:
@@ -203,23 +237,37 @@ def places_details(api_key: str, place_id: str) -> dict | None:
     return data.get("result", {})
 
 
-def enrich_candidate(api_key: str, c: Candidate) -> EnrichmentResult:
-    # Query con insegna se disponibile: aiuta molto il match delle catene
+MAX_DISTANZA_MATCH_M = 500.0  # oltre questa distanza il match è considerato sbagliato
+
+
+def enrich_candidate(api_key: str, c: Candidate) -> tuple[EnrichmentResult, str]:
+    """Ritorna (risultato, motivo). motivo = 'ok' | 'no_match' | 'troppo_lontano'."""
     nome_query = c.nome_super
     if c.insegna and c.insegna.lower() not in c.nome_super.lower():
         nome_query = f"{c.insegna} {c.nome_super}"
-    parti = [nome_query, c.citta]
-    if c.provincia:
-        parti.append(c.provincia)
-    query = ", ".join(parti) + ", supermercato Italia"
+    query = f"{nome_query}, {c.citta}"
 
-    place_id = places_find(api_key, query)
+    place_id, geometry = places_find(api_key, query, c.lat, c.lon)
     if not place_id:
-        return EnrichmentResult(osm_id=c.osm_id)
+        return EnrichmentResult(osm_id=c.osm_id), "no_match"
+
+    # === VERIFICA DISTANZA ===
+    # Se Google ha restituito un negozio lontano dal punto OSM, è l'omonimo
+    # sbagliato → scartiamo (meglio nessun dato che un telefono errato).
+    try:
+        loc = (geometry or {}).get("location") or {}
+        g_lat, g_lon = float(loc.get("lat")), float(loc.get("lng"))
+        d = distanza_metri(float(c.lat), float(c.lon), g_lat, g_lon)
+        if d > MAX_DISTANZA_MATCH_M:
+            return EnrichmentResult(osm_id=c.osm_id), f"troppo_lontano ({int(d)}m)"
+    except (TypeError, ValueError):
+        # Geometry mancante/illeggibile → non possiamo verificare: scartiamo per prudenza
+        return EnrichmentResult(osm_id=c.osm_id), "no_geometry"
+
     time.sleep(SLEEP_BETWEEN_CALLS_SEC)
     details = places_details(api_key, place_id)
     if not details:
-        return EnrichmentResult(osm_id=c.osm_id)
+        return EnrichmentResult(osm_id=c.osm_id), "no_details"
     phone_raw = details.get("international_phone_number") or details.get("formatted_phone_number") or ""
     return EnrichmentResult(
         osm_id=c.osm_id,
@@ -227,7 +275,7 @@ def enrich_candidate(api_key: str, c: Candidate) -> EnrichmentResult:
         sito_web=normalize_url(details.get("website") or ""),
         indirizzo=(details.get("formatted_address") or "").strip(),
         rating=details.get("rating"),
-    )
+    ), "ok"
 
 
 # ============================================================
@@ -308,19 +356,24 @@ def main():
 
     results = []
     success = 0
+    scartati = {"no_match": 0, "troppo_lontano": 0, "no_geometry": 0, "no_details": 0}
     for i, c in enumerate(candidates):
         etichetta = f"{c.insegna} · {c.nome_super}" if c.insegna else c.nome_super
         print(f"[{i+1}/{len(candidates)}] {etichetta} ({c.citta}) ...", flush=True)
-        r = enrich_candidate(api_key, c)
-        if r.telefono or r.sito_web or r.indirizzo or r.rating is not None:
+        r, motivo = enrich_candidate(api_key, c)
+        if motivo == "ok" and (r.telefono or r.sito_web or r.indirizzo or r.rating is not None):
             success += 1
             print(f"  ✓ ind={'sì' if r.indirizzo else 'no'}  tel={'sì' if r.telefono else 'no'}  web={'sì' if r.sito_web else 'no'}  rating={r.rating}", flush=True)
         else:
-            print("  - nessun risultato", flush=True)
+            key = motivo.split(" ")[0]
+            scartati[key] = scartati.get(key, 0) + 1
+            print(f"  - scartato: {motivo}", flush=True)
         results.append(r)
         time.sleep(SLEEP_BETWEEN_CALLS_SEC)
 
-    print(f"\nRichiamato Places per {len(candidates)} supermercati. Successi: {success}", flush=True)
+    print(f"\nRichiamato Places per {len(candidates)} supermercati.")
+    print(f"  Match validi: {success}")
+    print(f"  Scartati: no_match={scartati.get('no_match',0)} · troppo_lontano={scartati.get('troppo_lontano',0)} · no_geometry={scartati.get('no_geometry',0)} · no_details={scartati.get('no_details',0)}", flush=True)
 
     if args.dry_run:
         print("--dry-run: non scrivo nel Sheet. Esempi:")
