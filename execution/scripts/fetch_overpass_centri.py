@@ -321,7 +321,8 @@ def main():
 
     total_records = 0
     grand_totals = {"inserted": 0, "updated": 0, "skipped": 0}
-    failed_cities: list[str] = []
+    failed_cities: list[str] = []        # errori Overpass (tollerabili)
+    write_failed_cities: list[str] = []  # errori scrittura Apps Script (gravi)
 
     for idx, (city, prov) in enumerate(cities):
         print(f"[{idx+1}/{len(cities)}] {city} ({prov}) ...", flush=True)
@@ -344,15 +345,15 @@ def main():
                 try:
                     resp = post_to_apps_script(apps_url, apps_secret, batch)
                     if not resp.get("ok"):
-                        print(f"  ERRORE Apps Script: {resp}", file=sys.stderr)
-                        failed_cities.append(city)
+                        print(f"  ERRORE Apps Script (risposta): {resp}", file=sys.stderr)
+                        write_failed_cities.append(city)
                         break
                     grand_totals["inserted"] += resp.get("inserted", 0)
                     grand_totals["updated"]  += resp.get("updated", 0)
                     grand_totals["skipped"]  += resp.get("skipped", 0)
                 except Exception as e:
-                    print(f"  ERRORE POST Apps Script: {e}", file=sys.stderr)
-                    failed_cities.append(city)
+                    print(f"  ERRORE POST Apps Script (rete): {e}", file=sys.stderr)
+                    write_failed_cities.append(city)
                     break
 
         time.sleep(SLEEP_BETWEEN_QUERIES_SEC)
@@ -365,8 +366,24 @@ def main():
         print(f"  - Aggiornati: {grand_totals['updated']}")
         print(f"  - Skipped: {grand_totals['skipped']}")
     if failed_cities:
-        print(f"  Città con errori: {', '.join(failed_cities)}")
+        print(f"  Città con errori Overpass (timeout/rate-limit): {', '.join(failed_cities)}")
+
+    # === ESITO ===
+    if write_failed_cities:
+        print(f"  ❌ ERRORE SCRITTURA sul Sheet per: {', '.join(write_failed_cities)}")
+        print("     Verifica CENTRI_APPS_SCRIPT_URL / CENTRI_APPS_SCRIPT_SECRET e il deployment Apps Script.")
         sys.exit(1)
+
+    if not args.dry_run and total_records > 0 and (grand_totals["inserted"] + grand_totals["updated"] + grand_totals["skipped"]) == 0:
+        print("  ❌ Trovati record ma nessuno scritto nel Sheet.")
+        sys.exit(1)
+
+    if failed_cities and total_records == 0:
+        print("  ❌ Nessun dato recuperato: fallimento totale Overpass.")
+        sys.exit(1)
+
+    if failed_cities:
+        print(f"  ✅ OK parziale: {total_records} record processati nonostante {len(failed_cities)} città in errore Overpass.")
 
 
 if __name__ == "__main__":
