@@ -10,8 +10,11 @@
 
 <style>
 /* =========================================================================
-   DREAM TEAM CLOWN — Dashboard Lead Hotel
+   DREAM TEAM CLOWN — Dashboard Lead Supermercati
    Single-file, offline, zero-dependency.
+   NOTA: i nomi interni "hotel"/"nome_hotel" sono ereditati dalla dashboard hotel
+   (stesso motore condiviso). Il CSV reale usa "nome_super" → mappato in csvToHotels().
+   Non rinominare: romperebbe parser, export e import senza alcun beneficio.
    Modifica solo le costanti in fondo allo <script> per cambiare:
    - EMAIL_TEMPLATE  → testo della bozza email
    - APS             → IBAN, sito, nome legale
@@ -606,7 +609,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 <header class="app-header">
   <div class="header-row">
     <div class="brand">
-      <h1><span class="clown-dot"></span> Dream Team Clown · Lead Supermercati</h1>
+      <h1><span class="clown-dot"></span> TPM · Lead Supermercati</h1>
       <p>Teniamoci per Mano APS — banchetti raccolta fondi nei supermercati</p>
     </div>
     <div class="filters">
@@ -620,7 +623,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
         <option value="negativo">Risposto: no</option>
         <option value="no_risposta">Nessuna risposta</option>
       </select>
-      <!-- Filtro stelle nascosto: i centri commerciali non hanno stelle. Default 0 = mostra tutti. -->
+      <!-- Filtro stelle nascosto: i supermercati non hanno stelle. Default 0 = mostra tutti. -->
       <select id="starsFilter" aria-label="Filtra per stelle" hidden>
         <option value="0" selected>Tutti</option>
       </select>
@@ -643,7 +646,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
   <button class="secondary" id="btnConfig" title="Configura URL Google Sheet">⚙ Sorgente dati</button>
   <button class="ghost" id="btnOpenSheet" title="Apri Google Sheet per modificare" hidden>📊 Apri Sheet</button>
   <div class="spacer"></div>
-  <button class="ghost" id="btnAddHotel" title="Solo modalità locale">+ Aggiungi hotel</button>
+  <button class="ghost" id="btnAddHotel" title="Solo modalità locale">+ Aggiungi supermercato</button>
   <label class="btn-file">
     📥 Importa CSV/JSON
     <input type="file" id="csvImport" accept=".csv,.json" hidden>
@@ -658,34 +661,28 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 <!-- ===================== MAIN ===================== -->
 <main id="cityList"></main>
 <div id="noResults" class="no-results" hidden>
-  Nessun hotel corrisponde ai filtri correnti.
+  Nessun supermercato corrisponde ai filtri correnti.
 </div>
 
-<!-- ===================== MODAL: HOTEL ===================== -->
+<!-- ===================== MODAL: SUPERMERCATO ===================== -->
 <div class="modal-backdrop" id="hotelModal" hidden>
   <div class="modal">
     <div class="modal-header">
-      <h2 id="hotelModalTitle">Aggiungi hotel</h2>
+      <h2 id="hotelModalTitle">Aggiungi supermercato</h2>
       <button class="close-x" data-close="hotelModal" aria-label="Chiudi">×</button>
     </div>
     <div class="modal-body">
       <form id="hotelForm" class="form-grid" onsubmit="return false;">
-        <label class="full">Nome hotel * <input type="text" name="nome_hotel" required></label>
+        <label class="full">Nome supermercato * <input type="text" name="nome_hotel" required></label>
         <label>Città *
           <select name="citta" required id="hotelFormCity"></select>
         </label>
-        <label>Stelle
-          <select name="stelle">
-            <option value="1">1 ⭐</option>
-            <option value="2" selected>2 ⭐⭐</option>
-            <option value="3">3 ⭐⭐⭐</option>
-            <option value="4">4 ⭐⭐⭐⭐</option>
-            <option value="5">5 ⭐⭐⭐⭐⭐</option>
-          </select>
+        <label>Insegna / catena
+          <input type="text" name="insegna" placeholder="Coop, Conad, Lidl, Esselunga...">
         </label>
         <label class="full">Indirizzo <input type="text" name="indirizzo" placeholder="Via, n°, CAP, città"></label>
         <label>Telefono <input type="tel" name="telefono" placeholder="+39 ..."></label>
-        <label>Email <input type="email" name="email" placeholder="info@hotel.it"></label>
+        <label>Email <input type="email" name="email" placeholder="info@supermercato.it"></label>
         <label class="full">Sito web <input type="url" name="sito_web" placeholder="https://"></label>
         <label>Instagram <input type="text" name="instagram" placeholder="@handle o URL"></label>
         <label>Facebook <input type="text" name="facebook" placeholder="@handle o URL"></label>
@@ -737,7 +734,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
     </div>
     <div class="modal-body">
       <p class="muted" style="margin-top:0;font-size:0.88rem;">
-        Configura date, strutture (RSA / ospedali / case famiglia) e referente per ogni città in cui sarà presente il Dream Team Clown.
+        Configura date, location del banchetto e referente per ogni città in cui i volontari saranno presenti con la raccolta fondi.
         Solo le città configurate qui sotto possono generare email complete.
       </p>
       <input type="search" id="eventiSearch" placeholder="🔎 Filtra città..." style="width:100%;margin-bottom:1rem;">
@@ -759,12 +756,12 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
     </div>
     <div class="modal-body">
       <p class="muted" style="margin-top:0;font-size:0.88rem;">
-        Incolla gli URL CSV pubblicati delle due tab del tuo Google Sheet "Lead Hotel APS".
+        Incolla gli URL CSV pubblicati delle due tab del tuo Google Sheet "Lead Supermercati APS".
         Lasciali vuoti per modalità locale (dati solo nel tuo browser).
         <strong>Vedi <a href="https://github.com/" target="_blank">SETUP.md</a> per istruzioni.</strong>
       </p>
       <form id="configForm" class="form-grid" onsubmit="return false;">
-        <label class="full">URL CSV tab "Hotel" (pubblicato)
+        <label class="full">URL CSV tab "Supermercati" (pubblicato)
           <input type="url" name="hotel_csv_url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?gid=...&single=true&output=csv">
         </label>
         <label class="full">URL CSV tab "Eventi" (pubblicato)
@@ -780,7 +777,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
           <ol style="margin:0.2rem 0 0 1.1rem;padding:0;font-size:0.85rem;">
             <li>Apri il Google Sheet.</li>
             <li>File → <strong>Condividi → Pubblica sul web</strong>.</li>
-            <li>Nel selettore di sinistra: scegli la tab (es. "Hotel"); a destra: <strong>Valori separati da virgole (.csv)</strong>.</li>
+            <li>Nel selettore di sinistra: scegli la tab (es. "Supermercati"); a destra: <strong>Valori separati da virgole (.csv)</strong>.</li>
             <li>Clicca <strong>Pubblica</strong> → copia l'URL → incollalo sopra.</li>
             <li>Ripeti per la tab "Eventi".</li>
           </ol>
@@ -815,7 +812,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
         <summary>Vedi formato CSV atteso</summary>
         <div class="import-help-content">
           <p style="margin:0;">Header riga 1 (esatto, separatore virgola, UTF-8):</p>
-          <code>citta,provincia,nome_hotel,indirizzo,stelle,telefono,email,sito_web,instagram,facebook,linkedin,altro_social,note,stato</code>
+          <code>citta,provincia,nome_super,insegna,indirizzo,telefono,email,sito_web,instagram,facebook,linkedin,altro_social,note,stato</code>
           <p style="margin:0.5rem 0 0;font-size:0.78rem;" class="muted">
             In Excel italiano: File → Salva con nome → "CSV UTF-8 (delimitato da virgole)".<br>
             Se i caratteri accentati appaiono corrotti, ricontrolla l'encoding.
@@ -839,7 +836,7 @@ details.import-help[open] summary { margin-bottom: 0.5rem; }
 /** Identificativo build per verificare quale versione è attiva.
     Aggiornare manualmente a ogni modifica significativa.
     Visibile in basso a destra della dashboard + console al boot. */
-const BUILD_VERSION = "2026-07-12-supermercati-v1";
+const BUILD_VERSION = "2026-07-20-supermercati-testi-corretti";
 
 /* ============================================================
    CONFIG DEFAULT CONDIVISA — tutti gli utenti vedono gli stessi dati
@@ -858,8 +855,10 @@ const DEFAULT_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1BV-yA76o
    ============================================================ */
 
 /** Lista città del progetto (Comune → Provincia ISO 3166-2:IT).
-    50 città principali + ~93 comuni locali estesi. Vedi fetch_overpass.py per la
-    distinzione CITIES_MAIN / CITIES_EXTENDED utilizzata dai 2 workflow paralleli. */
+    108 capoluoghi di provincia (107 province, FC ha Forlì e Cesena) + 91 comuni
+    non capoluogo dove opera APS = 199 voci. Deve restare allineata a
+    fetch_overpass_supermercati.py (CITIES_MAIN + CITIES_EXTENDED + CITIES_LOCALI),
+    che alimenta i 3 workflow paralleli. */
 const CITIES = [
   // 107 capoluoghi di provincia italiani (vedi fetch_overpass_centri.py CITIES)
   ["Torino","TO"],["Asti","AT"],["Alessandria","AL"],["Biella","BI"],
@@ -896,7 +895,46 @@ const CITIES = [
   ["Catania","CT"],["Enna","EN"],["Messina","ME"],["Ragusa","RG"],
   ["Siracusa","SR"],["Trapani","TP"],
   ["Cagliari","CA"],["Nuoro","NU"],["Oristano","OR"],["Sassari","SS"],
-  ["Carbonia","SU"]
+  ["Carbonia","SU"],
+  // === 91 comuni NON capoluogo in cui opera APS (dataset "locali") ===
+  // Campania
+  ["Giugliano in Campania","NA"],["Lacco Ameno","NA"],["Nola","NA"],["Sorrento","NA"],
+  ["Vico Equense","NA"],["Pozzuoli","NA"],["San Giorgio a Cremano","NA"],["Afragola","NA"],
+  ["Caivano","NA"],["Castel Volturno","CE"],["Torre del Greco","NA"],["Cicciano","NA"],
+  ["Pompei","NA"],["Pomigliano d'Arco","NA"],["Scisciano","NA"],
+  ["Nocera Inferiore","SA"],["Scafati","SA"],["Angri","SA"],["Cava de' Tirreni","SA"],
+  ["Maddaloni","CE"],["San Clemente","CE"],["Casapulla","CE"],["Aversa","CE"],
+  ["Marcianise","CE"],["Sessa Aurunca","CE"],["Mondragone","CE"],
+  // Lazio
+  ["Alatri","FR"],["Sora","FR"],["Isola del Liri","FR"],
+  ["San Giorgio a Liri","FR"],["Ceccano","FR"],["Veroli","FR"],["Ceprano","FR"],
+  ["Fiuggi","FR"],["Colleferro","RM"],["Velletri","RM"],["Albano Laziale","RM"],
+  ["Lanuvio","RM"],["Cisterna di Latina","LT"],["Minturno","LT"],["Castelforte","LT"],
+  ["Santi Cosma e Damiano","LT"],["Formia","LT"],
+  // Lombardia / Piemonte
+  ["Melzo","MI"],["Cene","BG"],["Appiano Gentile","CO"],["Cantù","CO"],
+  ["Settimo Torinese","TO"],
+  // Veneto
+  ["Monteforte d'Alpone","VR"],["Sommacampagna","VR"],["Mestre","VE"],["Zelarino","VE"],
+  ["Mogliano Veneto","TV"],["Scorzè","VE"],["Chirignago","VE"],["Cazzago di Pianiga","VE"],
+  ["Trebaseleghe","PD"],
+  // Puglia
+  ["Monopoli","BA"],["Fasano","BR"],["San Giovanni Rotondo","FG"],["Manfredonia","FG"],
+  ["Monte Sant'Angelo","FG"],["Torremaggiore","FG"],
+  // Emilia-Romagna
+  ["Carpi","MO"],
+  // Sicilia
+  ["Taormina","ME"],["Milazzo","ME"],["Sant'Agata di Militello","ME"],["Capo d'Orlando","ME"],
+  ["Nizza di Sicilia","ME"],["Furci Siculo","ME"],["Santa Marina Salina","ME"],
+  ["Vittoria","RG"],["Comiso","RG"],["Pozzallo","RG"],
+  ["Augusta","SR"],["Lentini","SR"],["Termini Imerese","PA"],["Bagheria","PA"],
+  ["Gravina di Catania","CT"],["Caltagirone","CT"],["Acireale","CT"],
+  ["Valderice","TP"],["Xitta","TP"],["Troina","EN"],
+  // Sardegna
+  ["Sestu","CA"],["Capoterra","CA"],["Quartu Sant'Elena","CA"],["Pula","CA"],
+  ["Ussana","CA"],["Selargius","CA"],
+  // Toscana
+  ["Settignano","FI"]
 ];
 
 /** Coordinate APS — usate nel template email. */
@@ -921,7 +959,7 @@ const EMAIL_SUBJECT = 'RICHIESTA OSPITALITÀ SPAZIO - TENIAMOCI PER MANO APS "DR
 /** Tipi di evento supportati per i centri. Default "raccolta_fondi". */
 const TIPI_EVENTO = ["raccolta_fondi"];
 
-/** Corpo email centri commerciali — merge fields: {{HOTEL_NOME}} (= nome centro)
+/** Corpo email supermercati — merge fields: {{HOTEL_NOME}} (= nome supermercato)
     {{CITTA}} {{DATA_EVENTO}} {{STRUTTURE_LISTA}} (= location evento)
     {{REFERENTE_NOME}} {{REFERENTE_RUOLO}} {{REFERENTE_CONTATTO}}
     {{APS_NOME}} {{APS_SITO}} {{IBAN}} {{CAUSALE}}
@@ -961,18 +999,22 @@ Cordialmente,
 {{APS_NOME}}
 {{REFERENTE_CONTATTO}}`;
 
-/** Per i centri esiste un solo template: alias per compatibilità col codice condiviso. */
+/** Per i supermercati esiste un solo template: alias per compatibilità col codice condiviso. */
 const EMAIL_TEMPLATE_FESTIVAL = EMAIL_TEMPLATE;
 
 const CSV_HEADERS = [
-  "citta","provincia","nome_hotel","indirizzo","telefono","email",
+  "citta","provincia","nome_hotel","insegna","indirizzo","telefono","email",
   "sito_web","instagram","facebook","linkedin","altro_social","note","stato"
 ];
 
-/** Header v2 esteso (Sheet Centri). Nota: il CSV reale usa "nome_centro",
+/** Nomi colonna usati nell'export CSV. Il campo interno "nome_hotel" viene
+    esportato come "nome_super" per combaciare con lo schema del Sheet. */
+const CSV_HEADER_LABEL = { nome_hotel: "nome_super" };
+
+/** Header v2 esteso (Sheet Supermercati). Nota: il CSV reale usa "nome_super",
     il parser lo mappa al campo interno "nome_hotel". */
 const CSV_HEADERS_V2 = [
-  "id","citta","provincia","nome_hotel","indirizzo","telefono","email",
+  "id","citta","provincia","nome_hotel","insegna","indirizzo","telefono","email",
   "sito_web","instagram","facebook","linkedin","altro_social","note","stato",
   "fonte","osm_id","updated_at"
 ];
@@ -1029,7 +1071,7 @@ function loadState() {
   } catch (e) { lastSyncAt = null; }
 }
 
-/** Soglia oltre cui non salviamo hotels in localStorage (quota ~5MB → ~2-3k hotel max). */
+/** Soglia oltre cui non salviamo i record in localStorage (quota ~5MB → ~2-3k righe max). */
 const HOTELS_CACHE_LIMIT = 2000;
 
 function saveState() {
@@ -1099,7 +1141,7 @@ function csvEscape(v) {
 }
 
 function serializeCSV(list) {
-  const lines = [CSV_HEADERS.join(",")];
+  const lines = [CSV_HEADERS.map(k => CSV_HEADER_LABEL[k] || k).join(",")];
   for (const h of list) {
     lines.push(CSV_HEADERS.map(k => csvEscape(h[k])).join(","));
   }
@@ -1192,7 +1234,7 @@ function eventiFromCSV(text) {
   if (rows.length < 2) return {};
   const header = rows[0].map(h => h.trim().toLowerCase());
   const idx = {};
-  // Centri: tab EventiCentri usa "location_evento" al posto di "strutture".
+  // Supermercati: la tab Eventi usa "location_evento" al posto di "strutture".
   ["citta","data_evento","tipo_evento","location_evento","strutture","referente_nome","referente_ruolo","referente_contatto"].forEach(k => { idx[k] = header.indexOf(k); });
   if (idx.citta < 0) return {};
   // Schema: { "Roma": [evento1, evento2, ...], "Milano": [evento1] }
@@ -1268,7 +1310,7 @@ async function syncFromSheet() {
       hotels = parsed.rows;
       okHot = true;
     } catch (err) {
-      errors.push("Hotel CSV: " + err.message);
+      errors.push("Supermercati CSV: " + err.message);
     }
   }
 
@@ -1289,7 +1331,7 @@ async function syncFromSheet() {
     localStorage.setItem(STORAGE_KEY_SYNC, lastSyncAt);
     saveState();
     renderAll();
-    toast(`Sync OK: ${hotels.length} hotel · ${Object.keys(eventi).length} eventi configurati`, "success");
+    toast(`Sync OK: ${hotels.length} supermercati · ${Object.keys(eventi).length} città con eventi`, "success");
   }
   if (errors.length) {
     toast("Errori sync: " + errors.join(" | "), "error");
@@ -1367,16 +1409,14 @@ function generateEmail(hotel, eventoOverride) {
 
   const fill = (tpl) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => tokens[k] !== undefined ? tokens[k] : "{{" + k + "}}");
 
-  // Sceglie il template in base al tipo_evento.
-  // Default "clownterapia" (RSA/strutture sanitarie).
-  // "festival" → eventi pubblici (Smile Clown Festival, raccolte fondi pubbliche).
-  const template = (ev.tipo_evento === "festival") ? EMAIL_TEMPLATE_FESTIVAL : EMAIL_TEMPLATE;
+  // Per i supermercati esiste un solo template ("raccolta_fondi": banchetto nel punto vendita).
+  const template = EMAIL_TEMPLATE;
 
   return {
     ok: true,
     subject: fill(EMAIL_SUBJECT),
     body: fill(template),
-    tipo_evento: ev.tipo_evento || "clownterapia"
+    tipo_evento: ev.tipo_evento || "raccolta_fondi"
   };
 }
 
@@ -1419,7 +1459,7 @@ function renderStats() {
   $("#statPositive").textContent = positive;
 }
 
-/** Soglia oltre la quale la dashboard NON renderizza tutti gli hotel insieme
+/** Soglia oltre la quale la dashboard NON renderizza tutti i supermercati insieme
     ma richiede selezione esplicita città / ricerca testo per evitare freeze browser su mobile. */
 const LAZY_RENDER_THRESHOLD = 2000;
 
@@ -1438,10 +1478,10 @@ function renderCityList() {
     container.innerHTML = `
       <div class="no-results" style="padding:2rem 1.5rem;">
         <p style="font-size:1.1rem;margin:0 0 0.5rem;">
-          <strong>🎈 Dashboard pronta</strong> · ${hotels.length.toLocaleString('it')} hotel caricati su ${citiesWithHotels.length} città
+          <strong>🎈 Dashboard pronta</strong> · ${hotels.length.toLocaleString('it')} supermercati caricati su ${citiesWithHotels.length} città
         </p>
         <p style="margin:0 0 1.5rem;color:var(--c-text-muted);font-size:0.92rem;">
-          Per velocità, gli hotel non vengono mostrati tutti insieme.
+          Per velocità, i supermercati non vengono mostrati tutti insieme.
           Seleziona una città dal filtro in alto, oppure scrivi nella ricerca, per vedere i risultati.
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:0.4rem;justify-content:center;max-width:900px;margin:0 auto;">
@@ -1507,8 +1547,8 @@ function renderCityList() {
     container.innerHTML = `
       <div class="no-results">
         <p style="font-size:1.05rem;margin:0 0 0.5rem;"><strong>Benvenuto nella dashboard 🎈</strong></p>
-        <p style="margin:0 0 1rem;">Nessun hotel ancora caricato.</p>
-        <p style="font-size:0.9rem;">Inizia con <strong>+ Aggiungi hotel</strong>, <strong>📥 Importa CSV</strong>, oppure <strong>▶ Carica demo</strong> per vedere la dashboard in azione.</p>
+        <p style="margin:0 0 1rem;">Nessun supermercato ancora caricato.</p>
+        <p style="font-size:0.9rem;">Inizia con <strong>+ Aggiungi supermercato</strong>, <strong>📥 Importa CSV</strong>, oppure <strong>▶ Demo</strong> per vedere la dashboard in azione.</p>
       </div>`;
     $("#noResults").hidden = true;
   }
@@ -1576,7 +1616,6 @@ function renderRow(h) {
     h.altro_social && `<span title="${escapeHtml(h.altro_social)}">🔗</span>`
   ].filter(Boolean).join(" ");
 
-  const stars = "⭐".repeat(h.stelle || 0);
   return `
     <tr data-id="${h.id}">
       <td data-label="Nome"><strong>${escapeHtml(h.nome_hotel)}</strong></td>
@@ -1623,7 +1662,7 @@ function socialUrl(net, handle) {
 function populateCitySelects() {
   const cityFilter = $("#cityFilter");
   const hotelFormCity = $("#hotelFormCity");
-  // Ordina alfabeticamente le 50 città (CITIES rimane nell'ordine originale per il render principale,
+  // Ordina alfabeticamente le città (CITIES rimane nell'ordine originale per il render principale,
   // ma i dropdown filtro devono essere alfabetici per UX usabile)
   const sortedCities = CITIES.slice().sort((a, b) => a[0].localeCompare(b[0], 'it', { sensitivity: 'base' }));
   cityFilter.innerHTML = '<option value="">🇮🇹 Tutte le città</option>' +
@@ -1652,7 +1691,7 @@ function openHotelModal(hotelId, prefillCity) {
   const form = $("#hotelForm");
   form.reset();
   const isEdit = !!hotelId;
-  $("#hotelModalTitle").textContent = isEdit ? "Modifica hotel" : "Aggiungi hotel";
+  $("#hotelModalTitle").textContent = isEdit ? "Modifica supermercato" : "Aggiungi supermercato";
   $("#btnDeleteHotel").hidden = !isEdit;
   if (isEdit) {
     const h = hotels.find(x => x.id === hotelId);
@@ -1674,8 +1713,7 @@ function saveHotelFromForm() {
   for (const k of CSV_HEADERS) {
     data[k] = form.elements[k] ? form.elements[k].value.trim() : "";
   }
-  data.stelle = parseInt(data.stelle, 10) || 2;
-  if (!data.nome_hotel) { toast("Nome hotel obbligatorio", "error"); return; }
+  if (!data.nome_hotel) { toast("Nome supermercato obbligatorio", "error"); return; }
   if (!data.citta) { toast("Città obbligatoria", "error"); return; }
   const found = CITIES.find(c => c[0] === data.citta);
   if (found) data.provincia = found[1];
@@ -1690,16 +1728,16 @@ function saveHotelFromForm() {
   saveState();
   renderAll();
   closeModal("hotelModal");
-  toast("Hotel salvato", "success");
+  toast("Supermercato salvato", "success");
 }
 
 function deleteHotelById(id) {
-  if (!confirm("Eliminare questo hotel?")) return;
+  if (!confirm("Eliminare questo supermercato?")) return;
   hotels = hotels.filter(h => h.id !== id);
   saveState();
   renderAll();
   closeModal("hotelModal");
-  toast("Hotel eliminato", "info");
+  toast("Supermercato eliminato", "info");
 }
 
 /* ============================================================
@@ -1720,11 +1758,11 @@ function openEmailModal(hotelId, eventoIndex) {
     container.innerHTML = `
       <div class="warning-box">
         <h3>⚠ Dati evento mancanti per ${escapeHtml(result.missing)}</h3>
-        <p>Per generare l'email serve almeno la <strong>data evento</strong> e (raccomandato) la lista delle <strong>strutture</strong> dove opererà il Dream Team Clown a ${escapeHtml(result.missing)}.</p>
+        <p>Per generare l'email serve almeno la <strong>data evento</strong> e (raccomandato) la <strong>location</strong> dove i volontari saranno presenti a ${escapeHtml(result.missing)}.</p>
         <button class="primary" id="goToEventi">📅 Configura evento per ${escapeHtml(result.missing)}</button>
       </div>
       <p class="muted" style="font-size:0.85rem;">
-        Hotel: <strong>${escapeHtml(h.nome_hotel)}</strong> · ${escapeHtml(h.citta)}<br>
+        Supermercato: <strong>${escapeHtml(h.nome_hotel)}</strong> · ${escapeHtml(h.citta)}<br>
         Email destinatario: ${h.email ? `<a href="mailto:${escapeHtml(h.email)}">${escapeHtml(h.email)}</a>` : '<em>nessuna email salvata</em>'}
       </p>`;
     footer.innerHTML = `<button class="ghost" data-close="emailModal">Chiudi</button>`;
@@ -1755,8 +1793,8 @@ function openEmailModal(hotelId, eventoIndex) {
   ` : "";
   container.innerHTML = `
     <div class="email-meta">
-      <strong>Hotel:</strong> ${escapeHtml(h.nome_hotel)} · ${escapeHtml(h.citta)}<br>
-      <strong>Destinatario:</strong> ${h.email ? escapeHtml(h.email) : '<em>nessuna email salvata — aggiungila nel record hotel</em>'}<br>
+      <strong>Supermercato:</strong> ${escapeHtml(h.nome_hotel)}${h.insegna ? ' · ' + escapeHtml(h.insegna) : ''} · ${escapeHtml(h.citta)}<br>
+      <strong>Destinatario:</strong> ${h.email ? escapeHtml(h.email) : '<em>nessuna email salvata — aggiungila nel record supermercato</em>'}<br>
       <strong>Stato lead:</strong> <span class="stato-pill stato-${h.stato}">${STATO_LABEL[h.stato]}</span><br>
       <strong>Template usato:</strong> ${tipoLabel}
     </div>
@@ -1786,7 +1824,7 @@ function openEmailModal(hotelId, eventoIndex) {
     <button class="ghost" data-close="emailModal">Chiudi</button>
     <button class="ghost" id="btnCopySubj">📋 Copia oggetto</button>
     <button class="primary" id="btnCopyBody">📋 Copia testo</button>
-    ${h.email ? `<a href="${mailtoUrl}" class="button-link" id="btnMailto"><button class="success">✉️ Apri in client mail</button></a>` : `<button class="ghost" disabled title="Aggiungi prima l'email nel record hotel">✉️ Apri in mail (email mancante)</button>`}
+    ${h.email ? `<a href="${mailtoUrl}" class="button-link" id="btnMailto"><button class="success">✉️ Apri in client mail</button></a>` : `<button class="ghost" disabled title="Aggiungi prima l'email nel record supermercato">✉️ Apri in mail (email mancante)</button>`}
   `;
 
   openModal("emailModal");
@@ -1845,9 +1883,9 @@ function openEventiModal(scrollToCity) {
     // Il sheet_edit_url di solito ha #gid=0 (tab Hotel). Lo strippiamo e lasciamo che Google apra la prima tab.
     const baseUrl = config.sheet_edit_url.split('#')[0];
     const ok = confirm(
-      "In modalità Google Sheet condiviso, gli eventi (data + strutture per città) si aggiungono direttamente nel tab \"Eventi\" del foglio.\n\n" +
-      "Apertura del Sheet — vai sulla tab \"Eventi\" in basso e aggiungi una riga per ogni città in cui sarà presente il Dream Team Clown.\n\n" +
-      "Formato strutture: separate da PUNTO E VIRGOLA (es: \"RSA Villa Canova; RSA Villa Giselle\").\n\n" +
+      "In modalità Google Sheet condiviso, gli eventi (data + location per città) si aggiungono direttamente nel tab \"Eventi\" del foglio.\n\n" +
+      "Apertura del Sheet — vai sulla tab \"Eventi\" in basso e aggiungi una riga per ogni città in cui i volontari faranno raccolta fondi.\n\n" +
+      "Formato location_evento: separate da PUNTO E VIRGOLA (es: \"Ingresso galleria; Area casse\").\n\n" +
       "Continua?"
     );
     if (ok) window.open(baseUrl, "_blank");
@@ -1869,7 +1907,9 @@ function renderEventiList() {
   list.innerHTML = "";
   for (const [city, prov] of CITIES) {
     if (q && !city.toLowerCase().includes(q)) continue;
-    const ev = eventi[city] || {};
+    // L'editor locale gestisce solo il PRIMO evento della città (il multi-evento
+    // si configura nella tab "Eventi" del Google Sheet, vedi openEventiModal).
+    const ev = getEventiPerCitta(city)[0] || {};
     const configured = !!ev.data_evento;
     const card = document.createElement("div");
     card.className = "event-card" + (configured ? " configured" : "");
@@ -1880,8 +1920,8 @@ function renderEventiList() {
         <label>Data evento (testo libero)
           <input type="text" data-field="data_evento" value="${escapeHtml(ev.data_evento || '')}" placeholder="es. 11-12 Aprile 2026">
         </label>
-        <label>Strutture (separate da virgola)
-          <input type="text" data-field="strutture" value="${escapeHtml((ev.strutture || []).join(', '))}" placeholder="RSA Villa Canova, RSA Villa Giselle">
+        <label>Location banchetto (separate da virgola)
+          <input type="text" data-field="strutture" value="${escapeHtml((ev.strutture || []).join(', '))}" placeholder="Ingresso galleria, Area casse">
         </label>
         <label>Nome referente
           <input type="text" data-field="referente_nome" value="${escapeHtml(ev.referente_nome || REFERENTE_DEFAULT.referente_nome)}">
@@ -1909,7 +1949,7 @@ function saveAllEventi() {
     const referente_ruolo = get("referente_ruolo");
     const referente_contatto = get("referente_contatto");
     if (data_evento || strutture.length || referente_contatto) {
-      eventi[city] = { data_evento, strutture, referente_nome, referente_ruolo, referente_contatto };
+      eventi[city] = [{ data_evento, tipo_evento: "raccolta_fondi", strutture, referente_nome, referente_ruolo, referente_contatto }];
     } else {
       delete eventi[city];
     }
@@ -1958,9 +1998,9 @@ function normalizeImportedHotel(h) {
     id: h.id || uid(),
     citta: normalizeCityName(h.citta || ""),
     provincia: h.provincia || "",
-    nome_hotel: (h.nome_hotel || h.nome || "").trim(),
+    nome_hotel: (h.nome_super || h.nome_hotel || h.nome || "").trim(),
+    insegna: h.insegna || "",
     indirizzo: h.indirizzo || "",
-    stelle: parseInt(h.stelle, 10) || 2,
     telefono: h.telefono || "",
     email: h.email || "",
     sito_web: h.sito_web || h.sito || "",
@@ -1984,7 +2024,7 @@ function applyImport(mode) {
   if (!pendingImport) return;
   const rows = pendingImport.rows;
   if (mode === "replace") {
-    if (hotels.length > 0 && !confirm("Cancellare TUTTI i " + hotels.length + " hotel esistenti e sostituirli con i nuovi?")) return;
+    if (hotels.length > 0 && !confirm("Cancellare TUTTI i " + hotels.length + " supermercati esistenti e sostituirli con i nuovi?")) return;
     hotels = rows;
   } else if (mode === "merge") {
     const map = new Map();
@@ -2010,13 +2050,13 @@ function applyImport(mode) {
   } else {
     // append
     hotels.push(...rows);
-    toast(`+${rows.length} hotel aggiunti`, "success");
+    toast(`+${rows.length} supermercati aggiunti`, "success");
   }
   saveState();
   renderAll();
   closeModal("importModal");
   pendingImport = null;
-  if (mode === "replace") toast(`${rows.length} hotel importati (replace)`, "success");
+  if (mode === "replace") toast(`${rows.length} supermercati importati (replace)`, "success");
 }
 
 function exportCSV() {
@@ -2026,21 +2066,22 @@ function exportCSV() {
   const a = document.createElement("a");
   a.href = url;
   const ts = new Date().toISOString().slice(0,10);
-  a.download = `lead-hotel-${ts}.csv`;
+  a.download = `lead-supermercati-${ts}.csv`;
   a.click();
   URL.revokeObjectURL(url);
-  toast(`Esportati ${hotels.length} hotel`, "success");
+  toast(`Esportati ${hotels.length} supermercati`, "success");
 }
 
 function downloadEmptyTemplate() {
   const sample = [
     {
       id: "", citta: "Firenze", provincia: "FI",
-      nome_hotel: "Hotel Esempio (cancella questa riga)",
+      nome_hotel: "Supermercato Esempio (cancella questa riga)",
+      insegna: "Conad",
       indirizzo: "Via Roma 1, 50100 Firenze",
-      stelle: 3, telefono: "+39 055 1234567",
-      email: "info@hotelesempio.it", sito_web: "https://hotelesempio.it",
-      instagram: "@hotelesempio", facebook: "hotelesempio", linkedin: "",
+      telefono: "+39 055 1234567",
+      email: "info@supermercatoesempio.it", sito_web: "https://supermercatoesempio.it",
+      instagram: "@supermercatoesempio", facebook: "supermercatoesempio", linkedin: "",
       altro_social: "", note: "Riga di esempio — sovrascrivi con dati reali",
       stato: "da_contattare"
     }
@@ -2050,7 +2091,7 @@ function downloadEmptyTemplate() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `template-import-lead-hotel.csv`;
+  a.download = `template-import-lead-supermercati.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -2060,57 +2101,61 @@ function downloadEmptyTemplate() {
    ============================================================ */
 function loadDemo() {
   if (hotels.length > 0) {
-    if (!confirm("Aggiungere 3 hotel demo a Firenze ai dati esistenti?")) return;
+    if (!confirm("Aggiungere 3 supermercati demo a Firenze ai dati esistenti?")) return;
   }
   const now = new Date().toISOString();
-  const demoHotels = [
+  const demoSuper = [
     {
       id: uid(), citta: "Firenze", provincia: "FI",
-      nome_hotel: "[DEMO] Hotel del Sole",
+      nome_hotel: "[DEMO] Conad City Via dei Servi",
+      insegna: "Conad",
       indirizzo: "Via dei Servi 12, 50122 Firenze",
-      stelle: 3, telefono: "+39 055 0000001",
-      email: "info@hoteldelsole-demo.it", sito_web: "https://hoteldelsole-demo.it",
-      instagram: "@hoteldelsole_demo", facebook: "hoteldelsole.demo",
+      telefono: "+39 055 0000001",
+      email: "firenze.servi@conad-demo.it", sito_web: "https://conad-demo.it",
+      instagram: "@conad_demo", facebook: "conad.demo",
       linkedin: "", altro_social: "",
       note: "⚠ DATI DI ESEMPIO — sostituire prima dell'outreach reale",
       stato: "da_contattare", createdAt: now, updatedAt: now
     },
     {
       id: uid(), citta: "Firenze", provincia: "FI",
-      nome_hotel: "[DEMO] Albergo Centrale",
+      nome_hotel: "[DEMO] Coop Piazza della Stazione",
+      insegna: "Coop",
       indirizzo: "Piazza della Stazione 5, 50123 Firenze",
-      stelle: 2, telefono: "+39 055 0000002",
-      email: "prenotazioni@albergocentrale-demo.it",
-      sito_web: "albergocentrale-demo.it",
+      telefono: "+39 055 0000002",
+      email: "stazione@coop-demo.it",
+      sito_web: "coop-demo.it",
       instagram: "", facebook: "", linkedin: "", altro_social: "",
       note: "⚠ DATI DI ESEMPIO", stato: "da_contattare",
       createdAt: now, updatedAt: now
     },
     {
       id: uid(), citta: "Firenze", provincia: "FI",
-      nome_hotel: "[DEMO] B&B Giardino",
+      nome_hotel: "[DEMO] Carrefour Express Borgo Pinti",
+      insegna: "Carrefour",
       indirizzo: "Borgo Pinti 28, 50121 Firenze",
-      stelle: 2, telefono: "",
-      email: "ciao@bbgiardino-demo.it", sito_web: "",
-      instagram: "@bb_giardino_demo", facebook: "", linkedin: "",
-      altro_social: "tiktok.com/@bbgiardino_demo",
+      telefono: "",
+      email: "borgopinti@carrefour-demo.it", sito_web: "",
+      instagram: "@carrefour_demo", facebook: "", linkedin: "",
+      altro_social: "",
       note: "⚠ DATI DI ESEMPIO", stato: "contattato",
       createdAt: now, updatedAt: now
     }
   ];
-  hotels.push(...demoHotels);
+  hotels.push(...demoSuper);
   if (!eventi["Firenze"]) {
-    eventi["Firenze"] = {
+    eventi["Firenze"] = [{
       data_evento: "11-12 Aprile 2026",
-      strutture: ["RSA Villa Canova", "RSA Guido Raggi", "RSA Villa Giselle"],
+      tipo_evento: "raccolta_fondi",
+      strutture: ["Banchetto raccolta fondi Dream Team Clown"],
       referente_nome: REFERENTE_DEFAULT.referente_nome,
       referente_ruolo: REFERENTE_DEFAULT.referente_ruolo,
       referente_contatto: ""
-    };
+    }];
   }
   saveState();
   renderAll();
-  toast("Demo caricato: 3 hotel Firenze + evento configurato", "success");
+  toast("Demo caricato: 3 supermercati Firenze + evento configurato", "success");
 }
 
 /* ============================================================
@@ -2167,7 +2212,7 @@ function applySyncMode() {
    RESET
    ============================================================ */
 function resetAll() {
-  const confirmText = prompt(`Per cancellare TUTTI i dati locali (${hotels.length} hotel, ${Object.keys(eventi).length} eventi) digita ELIMINA in maiuscolo:`);
+  const confirmText = prompt(`Per cancellare TUTTI i dati locali (${hotels.length} supermercati, ${Object.keys(eventi).length} città con eventi) digita ELIMINA in maiuscolo:`);
   if (confirmText !== "ELIMINA") {
     toast("Reset annullato", "info");
     return;
