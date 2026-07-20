@@ -1,9 +1,11 @@
-name: Fetch Supermercati MAIN (58 capoluoghi Nord/Centro-Nord → Google Sheet Supermercati)
+name: Fetch Supermercati LOCALI (91 comuni non capoluogo APS → Google Sheet Supermercati)
 
+# Comuni non capoluogo in cui opera APS (Sorrento, Fiuggi, area casertana,
+# frazioni veneziane...). Complementare ai 108 capoluoghi di MAIN + EXTENDED.
 on:
-  # Domenica 04:00 UTC (dopo hotel main/extended e centri)
+  # Domenica 06:00 UTC (dopo main 04:00 e extended 05:00)
   schedule:
-    - cron: "0 4 * * 0"
+    - cron: "0 6 * * 0"
 
   workflow_dispatch:
     inputs:
@@ -12,7 +14,7 @@ on:
         required: false
         default: "false"
       city:
-        description: "Limita a una sola città (opzionale, es: Firenze)"
+        description: "Limita a una sola città (opzionale, es: Sorrento)"
         required: false
         default: ""
 
@@ -30,12 +32,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run fetch_overpass_supermercati (dataset main)
+      - name: Run fetch_overpass_supermercati (dataset locali)
         env:
           SUPER_APPS_SCRIPT_URL: ${{ secrets.SUPER_APPS_SCRIPT_URL }}
           SUPER_APPS_SCRIPT_SECRET: ${{ secrets.SUPER_APPS_SCRIPT_SECRET }}
         run: |
-          ARGS="--dataset main"
+          ARGS="--dataset locali"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi

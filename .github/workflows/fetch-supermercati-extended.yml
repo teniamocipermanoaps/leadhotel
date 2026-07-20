@@ -1,4 +1,4 @@
-name: Fetch Supermercati EXTENDED (93 comuni locali → Google Sheet Supermercati)
+name: Fetch Supermercati EXTENDED (50 capoluoghi Centro-Sud/Isole → Google Sheet Supermercati)
 
 on:
   # Domenica 05:00 UTC (dopo il main supermercati)
