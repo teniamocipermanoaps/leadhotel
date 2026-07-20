@@ -53,41 +53,103 @@ BATCH_SIZE_POST = 100
 SHOP_FILTER = "supermarket"
 
 # ============================================================
-# CITIES — stessa lista degli hotel (50 main + 93 extended)
+# ============================================================
+# CITIES — 107 CAPOLUOGHI DI PROVINCIA ITALIANI (108 voci: FC ha Forlì e Cesena)
+#
+# Categoria: supermercati (shop=supermarket) → copertura nazionale per provincia.
+# NON si usa la lista delle 145 città degli hotel: quella era tarata sulle
+# località turistiche/operative APS e ometteva ~53 capoluoghi.
+#
+# Split in due gruppi bilanciati (~54 città ciascuno) per restare sotto il
+# timeout di 60 min di GitHub Actions: i supermercati sono molti per città
+# (Roma ~740) e una singola run da 108 città sforerebbe.
+#   MAIN     = Nord + Centro-Nord (Piemonte → Toscana)
+#   EXTENDED = Centro-Sud + Isole (Umbria → Sardegna)
+#   LOCALI   = 93 comuni non capoluogo dove opera APS (Sorrento, Fiuggi, area
+#              casertana...), dataset aggiuntivo facoltativo.
 # ============================================================
 
+# --- MAIN: Nord + Centro-Nord (58 voci) ---
 CITIES_MAIN = [
-    ("Roma","RM"),("Milano","MI"),("Napoli","NA"),("Torino","TO"),("Palermo","PA"),
-    ("Genova","GE"),("Bologna","BO"),("Firenze","FI"),("Bari","BA"),("Catania","CT"),
-    ("Venezia","VE"),("Verona","VR"),("Messina","ME"),("Padova","PD"),("Trieste","TS"),
-    ("Taranto","TA"),("Brescia","BS"),("Parma","PR"),("Prato","PO"),("Modena","MO"),
-    ("Reggio Calabria","RC"),("Reggio Emilia","RE"),("Perugia","PG"),("Ravenna","RA"),
-    ("Livorno","LI"),("Cagliari","CA"),("Foggia","FG"),("Rimini","RN"),("Salerno","SA"),
-    ("Ferrara","FE"),("Sassari","SS"),("Latina","LT"),("Caserta","CE"),("Monza","MB"),
-    ("Siracusa","SR"),("Pescara","PE"),("Bergamo","BG"),("Forlì","FC"),("Trento","TN"),
-    ("Vicenza","VI"),("Terni","TR"),("Bolzano","BZ"),("Novara","NO"),("Piacenza","PC"),
-    ("Ancona","AN"),("Andria","BT"),("Arezzo","AR"),("Udine","UD"),("Cesena","FC"),
-    ("Lecce","LE"),
+    # Piemonte (8)
+    ("Torino","TO"),("Alessandria","AL"),("Asti","AT"),("Biella","BI"),
+    ("Cuneo","CN"),("Novara","NO"),("Verbania","VB"),("Vercelli","VC"),
+    # Valle d'Aosta (1)
+    ("Aosta","AO"),
+    # Liguria (4)
+    ("Genova","GE"),("Imperia","IM"),("La Spezia","SP"),("Savona","SV"),
+    # Lombardia (12)
+    ("Milano","MI"),("Bergamo","BG"),("Brescia","BS"),("Como","CO"),
+    ("Cremona","CR"),("Lecco","LC"),("Lodi","LO"),("Mantova","MN"),
+    ("Monza","MB"),("Pavia","PV"),("Sondrio","SO"),("Varese","VA"),
+    # Trentino-Alto Adige (2)
+    ("Trento","TN"),("Bolzano","BZ"),
+    # Veneto (7)
+    ("Venezia","VE"),("Belluno","BL"),("Padova","PD"),("Rovigo","RO"),
+    ("Treviso","TV"),("Verona","VR"),("Vicenza","VI"),
+    # Friuli-Venezia Giulia (4)
+    ("Trieste","TS"),("Gorizia","GO"),("Pordenone","PN"),("Udine","UD"),
+    # Emilia-Romagna (10: FC conta Forlì e Cesena)
+    ("Bologna","BO"),("Ferrara","FE"),("Forlì","FC"),("Cesena","FC"),
+    ("Modena","MO"),("Parma","PR"),("Piacenza","PC"),("Ravenna","RA"),
+    ("Reggio Emilia","RE"),("Rimini","RN"),
+    # Toscana (10)
+    ("Firenze","FI"),("Arezzo","AR"),("Grosseto","GR"),("Livorno","LI"),
+    ("Lucca","LU"),("Massa","MS"),("Pisa","PI"),("Pistoia","PT"),
+    ("Prato","PO"),("Siena","SI"),
 ]
 
+# --- EXTENDED: Centro-Sud + Isole (50 voci) ---
 CITIES_EXTENDED = [
+    # Umbria (2)
+    ("Perugia","PG"),("Terni","TR"),
+    # Marche (5)
+    ("Ancona","AN"),("Ascoli Piceno","AP"),("Fermo","FM"),
+    ("Macerata","MC"),("Pesaro","PU"),
+    # Lazio (5)
+    ("Roma","RM"),("Frosinone","FR"),("Latina","LT"),("Rieti","RI"),("Viterbo","VT"),
+    # Abruzzo (4)
+    ("L'Aquila","AQ"),("Chieti","CH"),("Pescara","PE"),("Teramo","TE"),
+    # Molise (2)
+    ("Campobasso","CB"),("Isernia","IS"),
+    # Campania (5)
+    ("Napoli","NA"),("Avellino","AV"),("Benevento","BN"),
+    ("Caserta","CE"),("Salerno","SA"),
+    # Puglia (6)
+    ("Bari","BA"),("Andria","BT"),("Brindisi","BR"),
+    ("Foggia","FG"),("Lecce","LE"),("Taranto","TA"),
+    # Basilicata (2)
+    ("Potenza","PZ"),("Matera","MT"),
+    # Calabria (5)
+    ("Catanzaro","CZ"),("Cosenza","CS"),("Crotone","KR"),
+    ("Reggio Calabria","RC"),("Vibo Valentia","VV"),
+    # Sicilia (9)
+    ("Palermo","PA"),("Agrigento","AG"),("Caltanissetta","CL"),
+    ("Catania","CT"),("Enna","EN"),("Messina","ME"),("Ragusa","RG"),
+    ("Siracusa","SR"),("Trapani","TP"),
+    # Sardegna (5)
+    ("Cagliari","CA"),("Nuoro","NU"),("Oristano","OR"),("Sassari","SS"),
+    ("Carbonia","SU"),
+]
+
+# --- LOCALI: 93 comuni non capoluogo in cui opera APS (dataset facoltativo) ---
+CITIES_LOCALI = [
     # Campania
     ("Giugliano in Campania","NA"),("Lacco Ameno","NA"),("Nola","NA"),("Sorrento","NA"),
     ("Vico Equense","NA"),("Pozzuoli","NA"),("San Giorgio a Cremano","NA"),("Afragola","NA"),
     ("Caivano","NA"),("Castel Volturno","CE"),("Torre del Greco","NA"),("Cicciano","NA"),
-    ("Pompei","NA"),("Pomigliano d'Arco","NA"),("Scisciano","NA"),("Avellino","AV"),
+    ("Pompei","NA"),("Pomigliano d'Arco","NA"),("Scisciano","NA"),
     ("Nocera Inferiore","SA"),("Scafati","SA"),("Angri","SA"),("Cava de' Tirreni","SA"),
     ("Maddaloni","CE"),("San Clemente","CE"),("Casapulla","CE"),("Aversa","CE"),
     ("Marcianise","CE"),("Sessa Aurunca","CE"),("Mondragone","CE"),
     # Lazio
-    ("Frosinone","FR"),("Alatri","FR"),("Sora","FR"),("Isola del Liri","FR"),
+    ("Alatri","FR"),("Sora","FR"),("Isola del Liri","FR"),
     ("San Giorgio a Liri","FR"),("Ceccano","FR"),("Veroli","FR"),("Ceprano","FR"),
     ("Fiuggi","FR"),("Colleferro","RM"),("Velletri","RM"),("Albano Laziale","RM"),
     ("Lanuvio","RM"),("Cisterna di Latina","LT"),("Minturno","LT"),("Castelforte","LT"),
     ("Santi Cosma e Damiano","LT"),("Formia","LT"),
-    # Lombardia
+    # Lombardia / Piemonte
     ("Melzo","MI"),("Cene","BG"),("Appiano Gentile","CO"),("Cantù","CO"),
-    # Piemonte
     ("Settimo Torinese","TO"),
     # Veneto
     ("Monteforte d'Alpone","VR"),("Sommacampagna","VR"),("Mestre","VE"),("Zelarino","VE"),
@@ -101,10 +163,10 @@ CITIES_EXTENDED = [
     # Sicilia
     ("Taormina","ME"),("Milazzo","ME"),("Sant'Agata di Militello","ME"),("Capo d'Orlando","ME"),
     ("Nizza di Sicilia","ME"),("Furci Siculo","ME"),("Santa Marina Salina","ME"),
-    ("Ragusa","RG"),("Vittoria","RG"),("Comiso","RG"),("Pozzallo","RG"),
+    ("Vittoria","RG"),("Comiso","RG"),("Pozzallo","RG"),
     ("Augusta","SR"),("Lentini","SR"),("Termini Imerese","PA"),("Bagheria","PA"),
     ("Gravina di Catania","CT"),("Caltagirone","CT"),("Acireale","CT"),
-    ("Trapani","TP"),("Valderice","TP"),("Xitta","TP"),("Enna","EN"),("Troina","EN"),
+    ("Valderice","TP"),("Xitta","TP"),("Troina","EN"),
     # Sardegna
     ("Sestu","CA"),("Capoterra","CA"),("Quartu Sant'Elena","CA"),("Pula","CA"),
     ("Ussana","CA"),("Selargius","CA"),
@@ -112,7 +174,11 @@ CITIES_EXTENDED = [
     ("Settignano","FI"),
 ]
 
-CITIES_ALL = CITIES_MAIN + CITIES_EXTENDED
+# Tutti i capoluoghi (108 voci) — usato dal flag --dataset capoluoghi
+CITIES_CAPOLUOGHI = CITIES_MAIN + CITIES_EXTENDED
+# Tutto il dataset disponibile
+CITIES_ALL = CITIES_MAIN + CITIES_EXTENDED + CITIES_LOCALI
+
 
 
 # ============================================================
@@ -305,12 +371,17 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch supermercati da Overpass → Google Sheet")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--city", help="Limita a una sola città (test)")
-    parser.add_argument("--dataset", choices=["main","extended","all"], default="main",
-                        help="main (50 città), extended (93 comuni), all")
+    parser.add_argument("--dataset", choices=["main","extended","locali","capoluoghi","all"], default="main",
+                        help="main (58 capoluoghi Nord/Centro-Nord), extended (50 capoluoghi Centro-Sud/Isole), "
+                             "locali (93 comuni non capoluogo APS), capoluoghi (tutti i 108), all (tutto)")
     args = parser.parse_args()
 
     if args.dataset == "extended":
         source_cities = CITIES_EXTENDED
+    elif args.dataset == "locali":
+        source_cities = CITIES_LOCALI
+    elif args.dataset == "capoluoghi":
+        source_cities = CITIES_CAPOLUOGHI
     elif args.dataset == "all":
         source_cities = CITIES_ALL
     else:
