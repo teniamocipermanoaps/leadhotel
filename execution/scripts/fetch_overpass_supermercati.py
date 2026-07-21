@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass, asdict
@@ -207,10 +208,50 @@ class SupermercatoRecord:
 # OVERPASS
 # ============================================================
 
+# Comuni il cui nome ufficiale in OSM differisce da quello di uso comune.
+# Il match sul nome esatto falliva in SILENZIO (0 risultati, nessun errore):
+# nel run EXTENDED del 2026-07-20 Cagliari, Oristano, Nuoro e Reggio Calabria
+# risultavano "riuscite" con zero supermercati.
+# I nomi bilingui separati da "/" (Casteddu/Cagliari, Bolzano/Bozen) sono già
+# gestiti dalla regex sotto: qui servono solo i casi in cui cambia la dicitura.
+# Verificati uno per uno su Overpass il 2026-07-20.
+# Con l'alias Reggio Calabria torna 23 supermercati (prima 0).
+# Cagliari/Oristano/Nuoro/Sassari/Bolzano/Aosta NON hanno bisogno di alias:
+# li recupera la regex sui nomi bilingui.
+# NON aggiungere "Reggio Emilia": in OSM il comune si chiama proprio così, e
+# mappandolo su "Reggio nell'Emilia" tornava 0 (regressione da 52 record).
+# Ogni voce aggiunta qui va provata con --dry-run --city PRIMA di committare.
+CITY_OSM_ALIASES = {
+    "Reggio Calabria": "Reggio di Calabria",
+}
+
+
 def build_overpass_query(city_name: str) -> str:
+    """Costruisce la query area+shop per un comune.
+
+    L'area viene cercata in tre modi, in unione, perché in OSM il tag `name`
+    di un comune non è sempre quello di uso comune:
+      1. regex ancorata: prende sia "Cagliari" sia il bilingue "Casteddu/Cagliari"
+         o "Bolzano/Bozen", SENZA catturare comuni diversi che iniziano allo
+         stesso modo ("Massa" non matcha "Massa Lubrense");
+      2. tag `name:it`, presente sui comuni bilingui;
+      3. alias esplicito per i casi in cui cambia proprio la dicitura
+         (Reggio Calabria -> Reggio di Calabria).
+    """
+    alias = CITY_OSM_ALIASES.get(city_name, city_name)
+    # In regex Overpass i metacaratteri vanno neutralizzati: i nomi dei comuni
+    # contengono apostrofi e punti (L'Aquila, Sant'Agata, Cazzago di Pianiga).
+    def esc(s: str) -> str:
+        return re.sub(r"([.^$*+?()\[\]{}|\\])", r"\\\1", s)
+
+    rx = esc(alias)
+    lvl = '["boundary"="administrative"]["admin_level"~"^(8|9|10)$"]'
     return f"""
 [out:json][timeout:60];
-area["name"="{city_name}"]["boundary"="administrative"]["admin_level"~"^(8|9|10)$"]->.searchArea;
+(
+  area{lvl}["name"~"(^|/){rx}(/|$)"];
+  area{lvl}["name:it"="{alias}"];
+)->.searchArea;
 (
   node["shop"="{SHOP_FILTER}"](area.searchArea);
   way["shop"="{SHOP_FILTER}"](area.searchArea);
@@ -404,42 +445,73 @@ def main():
     grand = {"inserted": 0, "updated": 0, "skipped": 0}
     failed_cities: list[str] = []      # errori Overpass (tollerabili: dati non disponibili)
     write_failed_cities: list[str] = []  # errori scrittura Apps Script (GRAVI: perdita dati)
+    zero_cities: list[str] = []        # query riuscita ma 0 risultati (area non trovata?)
 
-    for idx, (city, prov) in enumerate(cities):
-        print(f"[{idx+1}/{len(cities)}] {city} ({prov}) ...", flush=True)
-        try:
-            records = fetch_city(city, prov)
-        except Exception as e:
-            print(f"  ERRORE Overpass: {e}", file=sys.stderr)
-            failed_cities.append(city)
-            time.sleep(SLEEP_BETWEEN_QUERIES_SEC)
-            continue
+    def esegui_passata(elenco: list[tuple[str, str]], etichetta: str) -> list[tuple[str, str]]:
+        """Interroga Overpass e scrive nel Sheet per ogni città dell'elenco.
+        Ritorna le città fallite su Overpass (da ritentare)."""
+        nonlocal total_records
+        falliti: list[tuple[str, str]] = []
+        for idx, (city, prov) in enumerate(elenco):
+            print(f"[{etichetta}{idx+1}/{len(elenco)}] {city} ({prov}) ...", flush=True)
+            try:
+                records = fetch_city(city, prov)
+            except Exception as e:
+                print(f"  ERRORE Overpass: {e}", file=sys.stderr)
+                falliti.append((city, prov))
+                time.sleep(SLEEP_BETWEEN_QUERIES_SEC)
+                continue
 
-        total_records += len(records)
-        print(f"  → {len(records)} supermercati trovati")
+            total_records += len(records)
+            print(f"  → {len(records)} supermercati trovati")
+            # Zero risultati SENZA errore = quasi sempre area non trovata (nome OSM
+            # diverso da quello in lista), non un comune realmente privo di negozi.
+            # Va segnalato: prima passava inosservato e la città spariva dal Sheet.
+            if not records:
+                zero_cities.append(city)
 
-        if args.dry_run:
-            for r in records[:3]:
-                print("    " + json.dumps(r.to_dict(), ensure_ascii=False))
-            if len(records) > 3:
-                print(f"    ... e altri {len(records)-3}")
-        else:
-            for batch in batched([r.to_dict() for r in records], BATCH_SIZE_POST):
-                try:
-                    resp = post_to_apps_script(apps_url, apps_secret, batch)
-                    if not resp.get("ok"):
-                        print(f"  ERRORE Apps Script (risposta): {resp}", file=sys.stderr)
+            if args.dry_run:
+                for r in records[:3]:
+                    print("    " + json.dumps(r.to_dict(), ensure_ascii=False))
+                if len(records) > 3:
+                    print(f"    ... e altri {len(records)-3}")
+            else:
+                for batch in batched([r.to_dict() for r in records], BATCH_SIZE_POST):
+                    try:
+                        resp = post_to_apps_script(apps_url, apps_secret, batch)
+                        if not resp.get("ok"):
+                            print(f"  ERRORE Apps Script (risposta): {resp}", file=sys.stderr)
+                            write_failed_cities.append(city)
+                            break
+                        grand["inserted"] += resp.get("inserted", 0)
+                        grand["updated"]  += resp.get("updated", 0)
+                        grand["skipped"]  += resp.get("skipped", 0)
+                    except Exception as e:
+                        print(f"  ERRORE POST Apps Script (rete): {e}", file=sys.stderr)
                         write_failed_cities.append(city)
                         break
-                    grand["inserted"] += resp.get("inserted", 0)
-                    grand["updated"]  += resp.get("updated", 0)
-                    grand["skipped"]  += resp.get("skipped", 0)
-                except Exception as e:
-                    print(f"  ERRORE POST Apps Script (rete): {e}", file=sys.stderr)
-                    write_failed_cities.append(city)
-                    break
 
-        time.sleep(SLEEP_BETWEEN_QUERIES_SEC)
+            time.sleep(SLEEP_BETWEEN_QUERIES_SEC)
+        return falliti
+
+    # Passata 1 — tutte le città.
+    rimasti = esegui_passata(cities, "")
+
+    # Passata 2 — SOLO le città fallite su Overpass.
+    # Nel run MAIN #6 del 2026-07-20, 14 città su 58 sono uscite con errore
+    # Overpass (429/504): il workflow risultava verde ma Cuneo, Aosta, Udine,
+    # Pisa... restavano assenti dal Sheet. Gli errori Overpass sono quasi sempre
+    # transitori, quindi una seconda passata dopo una pausa lunga li recupera
+    # senza dover rilanciare l'intero workflow da capo.
+    if rimasti and not args.dry_run:
+        pausa = SLEEP_BETWEEN_QUERIES_SEC * 6
+        print("")
+        print(f"RITENTO {len(rimasti)} città fallite dopo {pausa:.0f}s di pausa: "
+              f"{', '.join(c for c, _ in rimasti)}", flush=True)
+        time.sleep(pausa)
+        rimasti = esegui_passata(rimasti, "retry ")
+
+    failed_cities = [c for c, _ in rimasti]
 
     print("")
     print("=" * 60)
@@ -448,8 +520,15 @@ def main():
         print(f"  - Inseriti: {grand['inserted']}")
         print(f"  - Aggiornati: {grand['updated']}")
         print(f"  - Skipped: {grand['skipped']}")
+    print(f"  Città elaborate con successo: {len(cities) - len(failed_cities)}/{len(cities)}")
+    if zero_cities:
+        print(f"  ⚠ Città con ZERO risultati ({len(zero_cities)}): {', '.join(zero_cities)}")
+        print("     Query riuscita ma area non trovata: probabile nome OSM diverso.")
+        print("     Aggiungi la dicitura corretta a CITY_OSM_ALIASES in questo script.")
     if failed_cities:
-        print(f"  Città con errori Overpass (timeout/rate-limit): {', '.join(failed_cities)}")
+        print(f"  ⚠ Città ancora in errore Overpass dopo il retry ({len(failed_cities)}): "
+              f"{', '.join(failed_cities)}")
+        print("     Rilancia il workflow indicando la città nel campo 'city' per recuperarle.")
 
     # === ESITO ===
     # Gli errori di SCRITTURA (Apps Script) sono sempre gravi: significano perdita dati.
